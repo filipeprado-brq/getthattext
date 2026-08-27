@@ -1,0 +1,30 @@
+01	curta	Aprovação curta	ok, pode subir
+02	curta	Adiar	agora não dá, eu vejo mais tarde
+03	curta	Confirmar recebimento	recebi sim, vou olhar já já
+04	curta	Pedir pra segurar	peraí, segura aí antes de subir
+05	curta	Sim com condição	pode sim, mas só depois que o teste passar
+06	curta	Sigla no meio	é... isso aí é pro time de RH mesmo, do cliente
+07	curta	Ferramenta pelo nome	deixa eu ver no Datadog, acho que tem log lá
+08	curta	Recusar educadamente	acho que não rola agora, né, deixa pra sprint que vem
+09	longa	Bug com hedge e jargão	então, é... eu acho que o problema tá no, no endpoint de autenticação, porque quando a gente manda o refresh token ele... ele retorna 401 mesmo com o token válido, né. tipo, eu testei aqui com o Postman e deu certo, mas no app não. acho que pode ser CORS mas não tenho certeza
+10	longa	E-mail de atraso pro cliente	oi, tudo bem? é... queria alinhar com vocês sobre o prazo da, da entrega da fase dois. a gente levantou aqui que o escopo de integração com o ERP ficou maior do que a gente tinha estimado, principalmente na parte de conciliação, e... e isso deve empurrar a entrega em umas duas semanas mais ou menos. eu queria propor uma call na quinta pra gente ver isso junto
+11	longa	Daily	então, ontem eu fiquei basicamente em cima do, do bug do upload, aí descobri que era o limite de tamanho no nginx, né, não era o código. hoje eu vou terminar isso e começar a olhar a tela de relatório. não tenho impedimento
+12	longa	Decisão técnica	a gente acabou indo de fila em vez de chamar direto, porque... tipo, o serviço do cliente cai bastante, e aí se a gente chamasse síncrono a request inteira ia falhar junto. com fila dá pra tentar de novo depois. o custo é que fica mais difícil de debugar, mas achei que compensava
+13	longa	Pedir ajuda	cara, você já viu esse erro de certificado no build? é... eu já limpei o cache, já reinstalei as dependências, já tentei em outra máquina e continua. o estranho é que no CI passa, só local que não
+14	longa	Resumo de reunião	então, na reunião de hoje o pessoal do cliente falou que quer priorizar o módulo de pagamento antes do relatório, e... e a gente ficou de mandar uma estimativa nova até sexta. o Rodrigo ficou de levantar o que já tá feito e eu fico com a parte de integração
+15	longa	Processo de deploy	o deploy é assim: primeiro você roda os testes local, aí abre o PR, quando aprovar faz o merge na main e o pipeline sobe sozinho pra homologação. pra produção é manual, tem que ir lá no Actions e apertar o botão, e... e avisar no canal antes
+16	longa	Reclamação técnica	mano, esse legado tá impossível, é... tem função de setecentas linhas, sem teste nenhum, e o cara que escreveu saiu da empresa. toda vez que eu mexo em alguma coisa quebra outra do outro lado
+17	longa	Descrição de PR	esse PR arruma o parsing de data no import de CSV. o problema era que a gente assumia ISO mas o arquivo do cliente vem em dia barra mês barra ano. eu adicionei teste pros dois formatos. presta atenção na parte de timezone que eu mexi, que é onde eu tenho mais dúvida
+18	longa	Explicar pra leigo	basicamente o sistema pega os pedidos que entram pelo site e distribui pras lojas mais perto do cliente, aí a loja confirma se tem o produto e... e o sistema calcula o frete e devolve o prazo. é isso
+19	longa	Próximos passos	então ficou assim: eu faço a parte de backend até quarta, a Bruna pega o front depois que eu subir o contrato da API, e a gente junta na quinta pra testar. se der problema a gente empurra pra semana que vem
+20	longa	Feedback de code review	olha, no geral tá bom, gostei da separação em camadas. mas... é... aqueles três métodos no service tão fazendo coisa demais, acho que dava pra quebrar. e faltou teste no caso de erro, só tem o caminho feliz
+21	arquivo	Caminho de arquivo	tem que mexer no src barra services barra auth ponto ts, é lá que tá a validação do token
+22	arquivo	Variável camelCase	o dateFormat tá vindo como undefined quando o usuário não escolhe nada, aí quebra na hora de formatar
+23	arquivo	Comando de terminal	roda npm run test dois traços watch, aí ele fica rodando enquanto você mexe
+24	arquivo	Endpoint	o barra api barra v1 barra usuarios barra me devolve os dados do usuário logado com as permissões
+25	arquivo	Dois arquivos	o import ponto spec ponto ts depende do fixtures ponto json, se você mudar um tem que mudar o outro
+26	jargao	Ferramenta de nome difícil	a gente tá usando o shadcn pros componentes, junto com Tailwind, e... e tá bem tranquilo de customizar
+27	jargao	Muitos termos em inglês	o deploy quebrou no merge porque o lint tava reclamando de um type any que passou no code review sem ninguém ver
+28	jargao	Siglas	precisa validar o CPF antes de mandar pro ERP, senão a NF sai errada e o SLA estoura
+29	hesitacao	Frase cortada	ah, sobre aquilo que a gente falou ontem, eu acho que a melhor saída é
+30	hesitacao	Auto-correção	então a gente pode usar o Redis pra... não, peraí, melhor não, porque aí ia ter que subir mais um serviço. deixa eu pensar, acho que dá pra resolver só com cache em memória mesmo

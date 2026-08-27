@@ -1,0 +1,30 @@
+01	curta	Aprove alguma coisa pro seu colega, do jeito mais curto que você diria de verdade.
+02	curta	Diga que não dá agora e que você vê mais tarde.
+03	curta	Confirme que recebeu e que vai olhar.
+04	curta	Peça pra pessoa segurar um pouco antes de subir.
+05	curta	Diga sim, mas com uma condição — bem curto.
+06	curta	Fale uma frase curta que mencione uma sigla da sua empresa ou de um cliente.
+07	curta	Fale uma frase curta que mencione uma ferramenta que você usa todo dia, pelo nome.
+08	curta	Recuse alguma coisa educadamente, em poucas palavras.
+09	longa	Explique pro seu colega um bug de autenticação que você encontrou: o que acontece, o que você já testou, e o que você suspeita.
+10	longa	Escreva um e-mail pro cliente avisando que um prazo vai atrasar, explicando por quê e propondo um próximo passo.
+11	longa	Conte o que você fez ontem, como se fosse a sua fala na daily.
+12	longa	Explique uma decisão técnica que você tomou recentemente e por que escolheu assim em vez da alternativa.
+13	longa	Peça ajuda pra alguém, descrevendo o problema e tudo que você já tentou.
+14	longa	Resuma uma reunião: quem falou o quê e o que ficou combinado.
+15	longa	Explique o processo de deploy do seu projeto, passo a passo.
+16	longa	Reclame de alguma coisa técnica que te irrita, com o tom que você usaria com um colega próximo.
+17	longa	Escreva a descrição de um pull request: o que mudou, por quê, e o que revisar com atenção.
+18	longa	Explique pra uma pessoa não-técnica o que o sistema em que você trabalha faz.
+19	longa	Combine os próximos passos com o time, dizendo quem faz o quê e até quando.
+20	longa	Dê feedback sobre um code review que você fez, apontando o que ficou bom e o que precisa mudar.
+21	arquivo	Fale um caminho de arquivo real do seu projeto, com pasta e extensão, dizendo o que tem nele.
+22	arquivo	Fale o nome de uma variável em camelCase e explique o que ela guarda.
+23	arquivo	Fale um comando de terminal que você roda com frequência e o que ele faz.
+24	arquivo	Fale o nome de um endpoint de API, com o caminho, e o que ele retorna.
+25	arquivo	Mencione dois arquivos diferentes na mesma frase, dizendo como um depende do outro.
+26	jargao	Fale sobre uma biblioteca ou ferramenta com nome estrangeiro difícil — do tipo que qualquer transcritor erraria.
+27	jargao	Fale uma frase em português usando pelo menos quatro termos técnicos em inglês.
+28	jargao	Fale três ou quatro siglas que você usa no trabalho, dentro de uma frase.
+29	hesitacao	Comece a explicar alguma coisa e pare no meio da frase, de propósito.
+30	hesitacao	Fale hesitando: comece a dizer uma coisa, se corrija no meio, e termine de outro jeito.

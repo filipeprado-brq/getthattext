@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+.DS_Store
+
+# Corpus de ditado — contém fala real sobre trabalho de cliente,
+# nomes de colegas e caminhos de projeto. Repo é público.
+.scratch/getthattext/research/corpus/wav/
+.scratch/getthattext/research/corpus/cru/
+.scratch/getthattext/research/corpus/cru-vad/
+.scratch/getthattext/research/corpus/ab-resultado.json
+
+# Chaves nunca entram no repo (a real vive em ~/.config/groq/key)
+*.key
+.env
+.env.*
