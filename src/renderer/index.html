@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>getthattext — captura</title>
+    <link rel="stylesheet" href="./estilo.css" />
+  </head>
+  <body>
+    <main>
+      <p class="aviso">
+        Janela descartável do ticket #1. Existe para provar o pipeline de
+        áudio antes de qualquer outra coisa depender dele.
+      </p>
+
+      <button id="gravar" type="button" disabled>Preparando…</button>
+
+      <p id="estado" class="estado">—</p>
+      <p id="resultado" class="resultado"></p>
+    </main>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
