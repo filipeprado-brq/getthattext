@@ -9,8 +9,8 @@ import { join } from "node:path";
  * acionar a captura e mostrar onde o arquivo caiu, para que o pipeline de
  * áudio seja verificável sozinho.
  */
-function criarJanela(): void {
-  const janela = new BrowserWindow({
+function createWindow(): void {
+  const window = new BrowserWindow({
     width: 560,
     height: 420,
     title: "getthattext — captura",
@@ -21,37 +21,32 @@ function criarJanela(): void {
     },
   });
 
-  void janela.loadFile(join(__dirname, "../renderer/index.html"));
+  void window.loadFile(join(__dirname, "../renderer/index.html"));
 }
 
-/** Nome com carimbo de tempo, para gravações sucessivas não se sobrescreverem. */
-function nomeDoArquivo(): string {
-  const agora = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return [
-    "getthattext",
-    `${agora.getFullYear()}${p(agora.getMonth() + 1)}${p(agora.getDate())}`,
-    `${p(agora.getHours())}${p(agora.getMinutes())}${p(agora.getSeconds())}`,
-  ].join("-") + ".wav";
+/**
+ * Nome ordenável e sem ambiguidade de fuso, com milissegundos — duas
+ * gravações no mesmo segundo não se sobrescrevem.
+ */
+function timestampedFilename(): string {
+  return `getthattext-${new Date().toISOString().replace(/[:.]/g, "-")}.wav`;
 }
 
-ipcMain.handle("salvar-wav", async (_evento, bytes: ArrayBuffer) => {
-  const caminho = join(app.getPath("temp"), nomeDoArquivo());
-  await writeFile(caminho, Buffer.from(bytes));
-  return caminho;
+ipcMain.handle("save-wav", async (_event, bytes: ArrayBuffer) => {
+  const path = join(app.getPath("temp"), timestampedFilename());
+  // Deixar rejeitar: o `invoke` propaga o erro ao renderer, que mostra a falha.
+  await writeFile(path, Buffer.from(bytes));
+  return path;
 });
 
-ipcMain.handle("revelar", (_evento, caminho: string) => {
-  shell.showItemInFolder(caminho);
+ipcMain.handle("reveal-in-finder", (_event, path: string) => {
+  shell.showItemInFolder(path);
 });
 
-void app.whenReady().then(() => {
-  criarJanela();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) criarJanela();
-  });
-});
+void app.whenReady().then(createWindow);
 
+// Sem ícone na barra ainda (ticket #2): fechar a janela encerra o app, e por
+// isso não há caminho de reativação a tratar.
 app.on("window-all-closed", () => {
   app.quit();
 });

@@ -6,27 +6,32 @@
  * carregado por URL, fora do grafo de módulos do renderer.
  *
  * O `process()` é chamado a cada render quantum — 128 frames, ~8 ms a
- * 16 kHz. O buffer que ele recebe é REUTILIZADO pelo motor, então cada
- * bloco precisa ser copiado antes de sair daqui.
+ * 16 kHz. O buffer recebido é REUTILIZADO pelo motor, então cada bloco
+ * precisa ser copiado antes de sair daqui.
+ *
+ * O portão de captura é ligado ANTES de conectar o microfone e desligado
+ * DEPOIS de desconectar: a flag atravessa a fronteira entre threads de
+ * forma assíncrona, e ordenar ao contrário perdia o começo e o fim da fala.
  */
 class PcmCapture extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.capturando = false;
-    this.port.onmessage = (evento) => {
-      this.capturando = evento.data === "iniciar";
+    this.capturing = false;
+    this.port.onmessage = (event) => {
+      this.capturing = event.data === "start";
     };
   }
 
   process(inputs) {
-    const canal = inputs[0]?.[0];
+    const channel = inputs[0]?.[0];
 
     // Sem entrada conectada ainda: seguir vivo, esperando.
-    if (!canal) return true;
+    if (!channel) return true;
 
-    if (this.capturando) {
-      // Cópia obrigatória — o motor sobrescreve este buffer no próximo quantum.
-      this.port.postMessage(new Float32Array(canal));
+    if (this.capturing) {
+      const copy = new Float32Array(channel);
+      // Transferível: entrega a posse do buffer em vez de cloná-lo.
+      this.port.postMessage(copy, [copy.buffer]);
     }
 
     return true;

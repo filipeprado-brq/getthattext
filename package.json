@@ -17,7 +17,7 @@
   "author": "",
   "license": "MIT",
   "description": "Ditado para macOS: fala vira texto no clipboard",
-  "private": "true",
+  "private": true,
   "devDependencies": {
     "@types/node": "^26.4.0",
     "electron": "^41.7.1",

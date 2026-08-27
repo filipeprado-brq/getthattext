@@ -8,6 +8,11 @@ A spec do MVP está em `.scratch/getthattext/spec.md`, e as decisões que a
 originaram estão em `.scratch/getthattext/map.md` com o raciocínio completo de
 cada uma em `.scratch/getthattext/issues/`.
 
+## Padrões de código
+
+Identificadores em inglês, prosa em português. Regras completas em
+`CODING_STANDARDS.md` — leia antes de escrever código neste repo.
+
 ## Agent skills
 
 ### Issue tracker
