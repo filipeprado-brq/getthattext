@@ -7,20 +7,33 @@
  */
 
 /**
- * `⌃⌥⌘G`, na sintaxe de accelerator do Electron.
+ * `⌥⌘G`, na sintaxe de accelerator do Electron.
  *
- * Escolhido no ticket 07 contra as 229 hotkeys registradas nesta máquina:
- * `⌃⌥⌘` + letra é quase livre no sistema. F13–F20 estavam ainda mais
- * livres, mas não existem em teclado de MacBook.
+ * O ticket 07 tinha escolhido `⌃⌥⌘G`. Mudou depois de usar: TRÊS
+ * modificadores é uma garra, e o ticket 07 foi escrito quando o gatilho
+ * ainda era push-to-talk, onde só importava segurar confortavelmente.
+ * Com toggle, o que importa é a forma da mão no toque.
  *
- * `⇧⌘Space` seria mais confortável e também está livre — foi rejeitado
- * justamente por isso: é a primeira tecla que qualquer lançador novo vai
- * querer, e instalar um Raycast no futuro quebraria o atalho.
+ * `⌘` + tecla única foi pedido e recusado, com motivo concreto: atalho
+ * global do macOS TEM PRECEDÊNCIA sobre atalho de menu de aplicativo, então
+ * registrar `⌘/` tomaria o comentar-linha do Cursor e do Xcode — ambos
+ * instalados nesta máquina — em todo lugar, e a medição do #5 mostra que o
+ * app não teria como avisar. O mesmo vale para `⌃` + letra (`⌃A`/`⌃E`/`⌃K`
+ * são navegação de linha em qualquer campo de texto do macOS) e `⌥` + letra
+ * (digita caractere: `⌥G` é ©).
  *
- * Ressalva não testada: com VoiceOver ligado, `⌃⌥` é a tecla VO.
- * Acrescentar `⌘` deve evitar a colisão, mas isso não foi verificado.
+ * Dois modificadores + letra é o ponto de equilíbrio, e `⌥⌘` são adjacentes
+ * no teclado. Medido nos 43 atalhos de sistema habilitados nesta máquina:
+ * `⌥⌘` só toma `D` (esconder o Dock) e `Space`.
+ *
+ * Risco que sobra, e não é pequeno: isso cobre atalhos DO SISTEMA. Conflito
+ * com menu de aplicativo não aparece em lugar nenhum e não é detectável —
+ * ver o comentário de `src/main/shortcut.ts`.
+ *
+ * Ressalva não testada: com VoiceOver ligado, `⌃⌥` é a tecla VO. `⌥⌘` não
+ * encosta nisso, então a ressalva do ticket 07 deixa de valer.
  */
-export const SHORTCUT_ACCELERATOR = "Control+Alt+Command+G";
+export const SHORTCUT_ACCELERATOR = "Alt+Command+G";
 
 /**
  * Como o macOS escreve cada modificador, e em que ordem.

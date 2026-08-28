@@ -6,12 +6,16 @@ import {
 } from "./shortcut";
 
 describe("o atalho padrão", () => {
-  it("é o ⌃⌥⌘G escolhido no ticket 07", () => {
-    expect(SHORTCUT_ACCELERATOR).toBe("Control+Alt+Command+G");
-    // ⌃⌥⌘ + letra é quase livre no sistema. ⇧⌘Space seria mais confortável
-    // e foi rejeitado: é a primeira tecla que qualquer lançador novo quer,
-    // então instalar um Raycast no futuro quebraria o atalho.
-    expect(SHORTCUT_LABEL).toBe("⌃⌥⌘G");
+  it("é ⌥⌘G: dois modificadores adjacentes, não três", () => {
+    expect(SHORTCUT_ACCELERATOR).toBe("Alt+Command+G");
+    expect(SHORTCUT_LABEL).toBe("⌥⌘G");
+  });
+
+  it("não é ⌘ + tecla única", () => {
+    // Atalho global tem precedência sobre atalho de menu de app, então
+    // ⌘/ tomaria o comentar-linha do Cursor e do Xcode em todo lugar — e o
+    // #5 mediu que o app não teria como avisar.
+    expect(SHORTCUT_ACCELERATOR.split("+").length).toBeGreaterThan(2);
   });
 
   it("o rótulo do menu sai do accelerator, não de uma segunda fonte", () => {
