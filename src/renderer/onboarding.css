@@ -1,69 +1,90 @@
-/* A primeira tela do app. Passos numerados, um estado visível por passo. */
-body { padding: 26px 30px 22px; display: flex; flex-direction: column; min-height: 100vh; }
+/* Wizard: um passo por vez, com o progresso no topo. */
+body {
+  padding: 22px 30px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
 
-header { margin-bottom: 22px; }
-header h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 3px; text-transform: none; color: var(--ink); }
-header p { margin: 0; color: var(--ink-soft); font-size: 13px; }
-
-#steps { list-style: none; margin: 0; padding: 0; flex: 1; }
-
-.step { display: grid; grid-template-columns: 22px 1fr; gap: 12px; padding-bottom: 20px; position: relative; }
-/* A linha que liga um passo ao próximo. */
-.step:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 10px; top: 20px; bottom: 4px;
-  width: 1px;
+/* Os pontos de progresso. Concluídos ficam cheios, o atual alongado. */
+#dots { display: flex; gap: 6px; margin-bottom: 26px; }
+.dot {
+  height: 4px;
+  width: 22px;
+  border-radius: 2px;
   background: var(--line);
+  transition: width 0.2s ease-out, background 0.2s ease-out;
+}
+.dot.done { background: var(--ink-soft); }
+.dot.current { background: var(--accent); width: 40px; }
+
+main { flex: 1; }
+
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+  margin: 0 0 10px;
 }
 
-.marker {
-  width: 21px; height: 21px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--paper);
-  position: relative;
-  z-index: 1;
-}
-.step.done .marker { background: var(--accent); border-color: transparent; }
-.step.done .marker::after {
-  content: "";
-  position: absolute; left: 6px; top: 3px;
-  width: 5px; height: 10px;
-  border: solid #fff; border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-.step.blocked .marker { border-color: var(--danger); }
+.panel { display: none; }
+.panel.active { display: block; }
 
-.body h2 { font-size: 13.5px; font-weight: 600; margin: 2px 0 4px; text-transform: none; letter-spacing: 0; color: var(--ink); }
-.optional { font-weight: 400; font-size: 11px; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 9px; padding: 1px 6px; margin-left: 4px; }
+.lead {
+  margin: 0 0 16px;
+  color: var(--ink-2, var(--ink-soft));
+  font-size: 13.5px;
+  line-height: 1.6;
+  max-width: 46ch;
+}
+.panel.blocked .lead { color: var(--danger); }
 
-.what { margin: 0 0 8px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
-.step.blocked .what { color: var(--danger); }
-.path { margin: 6px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
-.path:empty { display: none; }
+.aside {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  max-width: 48ch;
+}
+.aside:empty { display: none; }
 
 .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.actions input { flex: 1; min-width: 180px; }
-.actions:empty { display: none; }
-button.quiet { background: none; border-color: transparent; color: var(--ink-soft); padding-left: 4px; padding-right: 4px; }
-button.quiet:hover:not(:disabled) { color: var(--accent); }
+.actions input { flex: 1; min-width: 170px; }
+button.primary { background: var(--accent); border-color: transparent; color: #fff; padding: 6px 14px; }
+button.primary:disabled { background: var(--sunken); color: var(--ink-soft); border-color: var(--line); }
 
 /* Uma barra por modelo. */
-.bar { margin: 7px 0 0; }
-.bar-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 3px; }
+#bars { margin-bottom: 16px; }
+#bars:empty { display: none; }
+.bar { margin-bottom: 9px; }
+.bar-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 4px; }
 .bar-track { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
-.bar-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s ease-out; }
+.bar-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.15s linear; }
 .bar.done .bar-fill { background: var(--ink-soft); }
 
 .chord {
-  display: inline-flex; align-items: center;
-  padding: 2px 8px; border-radius: 5px;
-  background: var(--sunken); border: 1px solid var(--line);
-  font-size: 14px; letter-spacing: 0.04em; color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
 }
 
-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 18px;
+}
 footer #status { margin: 0; font-size: 12px; color: var(--danger); flex: 1; }
-footer button { background: var(--accent); border-color: transparent; color: #fff; padding: 7px 16px; font-size: 13px; }
-footer button:disabled { background: var(--sunken); color: var(--ink-soft); border-color: var(--line); }
+#back { color: var(--ink-soft); border-color: transparent; background: none; padding-left: 0; }
+#back:hover:not(:disabled) { color: var(--accent); }
+#back[hidden] { display: none; }
