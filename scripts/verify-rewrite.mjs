@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
 const { rewrite } = require("../dist/main/groq.js");
+const { applyDictionary } = require("../dist/shared/dictionary.js");
 
 const KEY_FILE = join(process.env.HOME ?? "", ".config/groq/key");
 
@@ -74,6 +75,24 @@ const CASES = [
     must: [/acredito|acho|creio/i, /talvez|não tenho certeza/i, /pessoal/i],
   },
   {
+    // O dicionário já trocou "use menu" por "useMenu" antes desta chamada;
+    // o que se verifica aqui é o Groq NÃO desfazer. Sem a lista no prompt
+    // ele não tem como saber que é identificador, e não erro de digitação.
+    name: "não desfaz o que o dicionário corrigiu",
+    dictionary: [
+      // `useMenu` não precisa de `heard`: a regra de camelCase deriva
+      // "use menu" sozinha. `Danger` precisa, porque erra por SOM — nenhuma
+      // regra chegaria de "dungeon" a "Danger".
+      { term: "useMenu", context: "hook do projeto" },
+      { term: "Danger", heard: ["dungeon"], context: "ferramenta de CI" },
+    ],
+    input:
+      "então o use menu tá quebrando quando o dungeon roda no pipeline, " +
+      "eu acho que é por causa da ordem das coisas ali, mas não tenho certeza",
+    must: ["useMenu", "Danger"],
+    reject: [/use menu/i, /dungeon/i],
+  },
+  {
     name: "preserva número e prazo",
     input: "são 3 tickets pra entregar até sexta feira dia 12",
     must: ["3", "12"],
@@ -94,10 +113,14 @@ const apiKey = readFileSync(KEY_FILE, "utf8").trim();
 
 let failures = 0;
 
-for (const { name, input, must = [], reject = [] } of CASES) {
+for (const { name, input, must = [], reject = [], dictionary = [] } of CASES) {
+  // O mesmo caminho do app: substituição determinística primeiro, lista de
+  // termos no prompt depois.
+  const corrected = applyDictionary(input, dictionary);
+
   let result;
   try {
-    result = await rewrite(input, apiKey);
+    result = await rewrite(corrected, apiKey, dictionary);
   } catch (error) {
     failures++;
     console.log(`FALHOU ${name} — a chamada não completou: ${error.message}`);

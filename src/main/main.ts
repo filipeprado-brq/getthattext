@@ -8,6 +8,7 @@ import {
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
+import { applyDictionary } from "../shared/dictionary";
 import { formatElapsed } from "../shared/elapsed";
 import { PRESENTATION, type State } from "../shared/states";
 import { SHORTCUT_ACCELERATOR, SHORTCUT_LABEL } from "../shared/shortcut";
@@ -18,6 +19,7 @@ import {
   releaseShortcut,
   warnIfShortcutMissing,
 } from "./shortcut";
+import { dictionary } from "./dictionary";
 import { rewriteOrRaw } from "./groq";
 import { preferences, setPreference } from "./preferences";
 import { hasSpeech, transcribe } from "./whisper";
@@ -34,17 +36,25 @@ let tray: Tray | undefined;
 let state: State = "idle";
 
 /**
- * A transcrição crua da última ditação, recuperável pelo menu.
+ * A última ditação, nas duas formas anteriores à reescrita.
  *
  * SÓ MEMÓRIA, de propósito: isto não é histórico e nada disso vai para o
  * disco. Existe porque a reescrita pode distorcer, e o texto longo é
  * justamente onde você menos pega o erro — o cru recuperável é o seguro
  * barato que dispensa uma janela de revisão a cada ditação.
  *
- * Uma gravação sem fala não apaga o cru anterior: ela não produziu nada,
- * então não tem o que substituir.
+ * São DUAS de propósito. `heard` é o que o Whisper literalmente entregou, e
+ * é o que o #8 precisa para você apontar a palavra que saiu errada.
+ * `corrected` já passou pelo dicionário, e é o que vai para o clipboard —
+ * o menu nunca pode PIORAR o que você tem, e entregar o literal depois de
+ * uma ditação degradada faria exatamente isso.
+ *
+ * Uma gravação sem fala não apaga a anterior: ela não produziu nada, então
+ * não tem o que substituir.
  */
-let lastTranscript: string | undefined;
+type Dictation = { heard: string; corrected: string };
+
+let lastDictation: Dictation | undefined;
 
 /** Quanto tempo um estado terminal fica visível antes de voltar a ocioso. */
 const TERMINAL_MS = 2000;
@@ -160,9 +170,9 @@ function createTray(): void {
         { type: "separator" },
         {
           label: "Copiar transcrição crua",
-          enabled: lastTranscript !== undefined,
+          enabled: lastDictation !== undefined,
           click: () => {
-            if (lastTranscript !== undefined) clipboard.writeText(lastTranscript);
+            if (lastDictation) clipboard.writeText(lastDictation.corrected);
           },
         },
         { type: "separator" },
@@ -242,13 +252,21 @@ ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
       return;
     }
 
-    lastTranscript = transcript;
+    // O dicionário vem ANTES do Groq. Na ordem contrária ele desfaria
+    // escolhas boas do LLM: o modelo reescreve a frase inteira, e trocar
+    // palavras depois quebraria a concordância que ele acabou de acertar.
+    const entries = dictionary();
+    const corrected = applyDictionary(transcript, entries);
+    lastDictation = { heard: transcript, corrected };
 
-    const rewritten = await rewriteOrRaw(transcript);
+    const rewritten = await rewriteOrRaw(corrected, entries);
     if (rewritten.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
 
+    // "Cru" aqui significa "não passou pela IA". A substituição é
+    // determinística e offline: não há razão para perdê-la porque o Groq
+    // caiu.
     clipboard.writeText(
-      rewritten.kind === "rewritten" ? rewritten.text : transcript,
+      rewritten.kind === "rewritten" ? rewritten.text : corrected,
     );
 
     // As duas degradações são independentes e podem acontecer juntas. O cru

@@ -1,5 +1,6 @@
 import Groq, { AuthenticationError } from "groq-sdk";
-import { cleanRewrite, SYSTEM_PROMPT } from "../shared/rewrite";
+import type { Entry } from "../shared/dictionary";
+import { cleanRewrite, systemPromptFor } from "../shared/rewrite";
 import { clearApiKey, loadApiKey } from "./apiKey";
 
 /**
@@ -55,6 +56,7 @@ function isInvalidApiKey(error: unknown): boolean {
 export async function rewrite(
   transcript: string,
   apiKey: string,
+  entries: readonly Entry[],
 ): Promise<Rewritten> {
   const client = new Groq({
     apiKey,
@@ -67,7 +69,7 @@ export async function rewrite(
   const stream = await client.chat.completions.create({
     model: MODEL,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPromptFor(entries, transcript) },
       { role: "user", content: transcript },
     ],
     temperature: TEMPERATURE,
@@ -110,7 +112,10 @@ export async function rewrite(
  *
  * Abrir as preferências nesse caso é do #9, que ainda não existe.
  */
-export async function rewriteOrRaw(transcript: string): Promise<Rewritten> {
+export async function rewriteOrRaw(
+  transcript: string,
+  entries: readonly Entry[],
+): Promise<Rewritten> {
   let apiKey: string | undefined;
   try {
     apiKey = await loadApiKey();
@@ -123,7 +128,7 @@ export async function rewriteOrRaw(transcript: string): Promise<Rewritten> {
   if (apiKey === undefined) return { kind: "raw", why: "sem chave configurada" };
 
   try {
-    return await rewrite(transcript, apiKey);
+    return await rewrite(transcript, apiKey, entries);
   } catch (error) {
     if (isInvalidApiKey(error)) {
       console.error("o Groq recusou a chave; apagando a chave guardada");

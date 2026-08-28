@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanRewrite, SYSTEM_PROMPT } from "./rewrite";
+import { cleanRewrite, systemPromptFor, SYSTEM_PROMPT } from "./rewrite";
 
 describe("SYSTEM_PROMPT", () => {
   it("fixa o limiar de 40 palavras", () => {
@@ -100,5 +100,22 @@ describe("cleanRewrite", () => {
   it("devolve vazio quando não sobra nada", () => {
     expect(cleanRewrite("")).toBe("");
     expect(cleanRewrite("   \n ")).toBe("");
+  });
+});
+
+describe("systemPromptFor", () => {
+  it("sem dicionário, é o prompt da spec e nada mais", () => {
+    expect(systemPromptFor([], "qualquer texto")).toBe(SYSTEM_PROMPT);
+  });
+
+  it("anexa a lista sem tocar no prompt base", () => {
+    const withTerms = systemPromptFor([{ term: "useMenu" }], "o useMenu quebrou");
+
+    expect(withTerms.startsWith(SYSTEM_PROMPT)).toBe(true);
+    expect(withTerms).toContain("useMenu");
+  });
+
+  it("termo que não está no texto não entra no prompt", () => {
+    expect(systemPromptFor([{ term: "useMenu" }], "nada aqui")).toBe(SYSTEM_PROMPT);
   });
 });

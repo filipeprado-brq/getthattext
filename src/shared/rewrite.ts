@@ -1,3 +1,7 @@
+// Com extensão de propósito: `dist/shared/` é consumido como ESM pelo
+// renderer, e ali um import relativo sem `.js` não resolve.
+import { type Entry, termsForPrompt } from "./dictionary.js";
+
 /**
  * O prompt de reescrita e a limpeza defensiva da resposta.
  *
@@ -142,4 +146,20 @@ export function cleanRewrite(answer: string): string {
   }
 
   return unwrapQuotes(text);
+}
+
+/**
+ * O prompt final: o da spec, mais os termos do dicionário que aparecem no
+ * texto.
+ *
+ * Ponto único de montagem. O porquê da lista de termos está em
+ * `termsForPrompt`, no módulo do dicionário.
+ *
+ * Vai no fim: o prompt base é literalmente o da seção 5 da spec, e mantê-lo
+ * como um bloco intacto deixa a diferença óbvia na leitura.
+ */
+export function systemPromptFor(entries: readonly Entry[], text: string): string {
+  const terms = termsForPrompt(entries, text);
+
+  return terms.length === 0 ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\n\n${terms}`;
 }
