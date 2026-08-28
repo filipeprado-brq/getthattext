@@ -1,4 +1,5 @@
 import { RECOMMENDED_MODEL, TRANSCRIPTION_MODELS } from "./models.js";
+import { DEFAULT_PROVIDER, isUsableProvider } from "./providers.js";
 import { isValidAccelerator, SHORTCUT_ACCELERATOR } from "./shortcut.js";
 
 /**
@@ -48,6 +49,8 @@ export type Preferences = {
   language: string;
   /** O modelo de transcrição escolhido, entre os do catálogo. */
   model: string;
+  /** Quem reescreve o texto, entre os provedores disponíveis. */
+  provider: string;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -56,6 +59,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   shortcut: SHORTCUT_ACCELERATOR,
   language: "pt",
   model: RECOMMENDED_MODEL,
+  provider: DEFAULT_PROVIDER,
 };
 
 /** Fica com o valor gravado só se ele for do tipo certo. */
@@ -114,5 +118,8 @@ export function parsePreferences(text: string | undefined): Preferences {
     model: pick(stored, "model", (value) =>
       TRANSCRIPTION_MODELS.some(({ file }) => file === value),
     ),
+    // Mesmo motivo do modelo: um provedor que o app não sabe chamar só
+    // apareceria como falha na primeira reescrita, com o diagnóstico errado.
+    provider: pick(stored, "provider", isUsableProvider),
   };
 }

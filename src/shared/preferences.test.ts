@@ -17,6 +17,18 @@ describe("parsePreferences", () => {
     });
   });
 
+  it("só aceita provedor que o app sabe chamar", () => {
+    // "openai" está no catálogo, mas anunciado — aceitar viraria uma
+    // reescrita que falha na primeira ditação, com o diagnóstico errado.
+    expect(parsePreferences('{"provider":"groq"}').provider).toBe("groq");
+    expect(parsePreferences('{"provider":"openai"}').provider).toBe(
+      DEFAULT_PREFERENCES.provider,
+    );
+    expect(parsePreferences('{"provider":"nada"}').provider).toBe(
+      DEFAULT_PREFERENCES.provider,
+    );
+  });
+
   it("cai no padrão quando o arquivo não existe ou está corrompido", () => {
     // Preferência ilegível não pode derrubar o app: o pior que acontece é
     // uma configuração voltar ao default, que é visível e corrigível.

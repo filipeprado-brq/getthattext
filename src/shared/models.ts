@@ -28,6 +28,20 @@ export type TranscriptionModel = Model & {
    * trechos em loop seria oferecer uma armadilha.
    */
   tradeoff: string;
+  /**
+   * A potência, de 1 a 5.
+   *
+   * É a medição do corpus reduzida ao que cabe num card: 18/18 termos
+   * técnicos vira 5, 9/18 vira 3, e o `base` cai para 1 porque errar sigla
+   * e repetir trechos em loop são duas falhas, não uma pior.
+   *
+   * A nota some do card em traços, sem número. O número, o rótulo e a
+   * medição atrás dele ficam na explicação — o card não é lugar de
+   * argumentar.
+   */
+  power: 1 | 2 | 3 | 4 | 5;
+  /** Como essa potência se chama, para quem não conta traços. */
+  powerLabel: string;
   recommended?: true;
 };
 
@@ -58,6 +72,8 @@ export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
     label: "Modelo de transcrição",
     name: "Completo",
     tradeoff: "Preserva nome de arquivo, camelCase e sigla.",
+    power: 5,
+    powerLabel: "Excelente",
     recommended: true,
   },
   {
@@ -70,6 +86,8 @@ export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
     tradeoff:
       "Um terço do tamanho. Erra cerca de metade das siglas e dos nomes de " +
       'arquivo — "PNR" vira "PNE", "IDS" vira "DS".',
+    power: 3,
+    powerLabel: "Bom para prosa",
   },
   {
     file: "ggml-base-q5_1.bin",
@@ -81,6 +99,8 @@ export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
     tradeoff:
       "Dez vezes menor. Além de errar siglas, às vezes repete trechos em " +
       "loop e produz quase o dobro de texto.",
+    power: 1,
+    powerLabel: "Limitado",
   },
 ];
 

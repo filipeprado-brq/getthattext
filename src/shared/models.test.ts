@@ -41,6 +41,21 @@ describe("o catálogo", () => {
     expect(recommended[0]?.file).toBe(RECOMMENDED_MODEL);
   });
 
+  it("a potência acompanha a medição, e o recomendado é o mais potente", () => {
+    // A nota é a medição do corpus reduzida ao que cabe num card. Se ela
+    // divergir da ordem do catálogo, o card recomenda uma coisa e os traços
+    // apontam outra.
+    const [best] = TRANSCRIPTION_MODELS;
+
+    expect(best?.recommended).toBe(true);
+    for (const model of TRANSCRIPTION_MODELS) {
+      expect(model.power).toBeGreaterThanOrEqual(1);
+      expect(model.power).toBeLessThanOrEqual(5);
+      expect(model.powerLabel.length).toBeGreaterThan(0);
+      expect(best!.power).toBeGreaterThanOrEqual(model.power);
+    }
+  });
+
   it("cada opção diz o que se perde, não só o tamanho", () => {
     // Oferecer "60 MB" sem dizer que ele repete trechos em loop seria
     // oferecer uma armadilha.
