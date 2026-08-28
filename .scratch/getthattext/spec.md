@@ -98,7 +98,9 @@ whisper-cli -m ggml-large-v3-turbo-q5_0.bin -f - -otxt -of - -l pt -nt -np -sns 
 
 ## 4. Dicionário customizado
 
-**Formato:** `dicionario.json` em `~/Library/Application Support/<productName>/`, arranjo ordenado de `{ term, heard?[], context? }`.
+**Formato:** `dictionary.json` em `~/Library/Application Support/<productName>/`, arranjo ordenado de `{ term, heard?[], context? }`.
+
+> **Corrigido na implementação do #7.** Esta seção dizia `dicionario.json`. O nome passou para inglês porque a regra 1 do [`CODING_STANDARDS.md`](../../CODING_STANDARDS.md) põe nome de arquivo entre os identificadores em inglês, o app já grava `preferences.json` na mesma pasta, e a research de empacotamento já registrava `<userData>/dictionary.json` — a spec é que estava inconsistente consigo mesma.
 
 **Aplicação: substituição determinística, ANTES do Groq.** A ordem importa — depois, ela desfaria escolhas boas do LLM. Os termos também vão na lista do prompt do Groq.
 

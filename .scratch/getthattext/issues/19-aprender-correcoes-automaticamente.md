@@ -52,7 +52,7 @@ E a razão é **estrutural, não de prompt**: a trava `NUNCA MUDE nomes de arqui
 
 ### Mecanismo novo: aprender do que o usuário corrige
 
-O editor de dicionário, que já existe no menu do clique direito, ganha **"adicionar do último ditado"**: mostra a transcrição crua (que já está em memória, por [Cola direto ou revisa antes](./09-cola-direto-ou-revisa-antes.md)), o usuário clica na palavra que saiu errada e digita a correta. O par vira entrada de `heard[]` no `dicionario.json` e, na ditação seguinte, substituição determinística de custo zero em TPM.
+O editor de dicionário, que já existe no menu do clique direito, ganha **"adicionar do último ditado"**: mostra a transcrição crua (que já está em memória, por [Cola direto ou revisa antes](./09-cola-direto-ou-revisa-antes.md)), o usuário clica na palavra que saiu errada e digita a correta. O par vira entrada de `heard[]` no `dictionary.json` e, na ditação seguinte, substituição determinística de custo zero em TPM.
 
 **A fonte da verdade passa a ser o usuário**, que sabe que era `auth`, em vez do modelo, que não tem como saber.
 

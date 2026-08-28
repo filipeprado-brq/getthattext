@@ -465,7 +465,7 @@ Cada mecanismo consome um formato diferente:
 **Proposta: um só arquivo, com o par opcional.**
 
 ```jsonc
-// dicionario.json
+// dictionary.json
 {
   "version": 1,
   "terms": [
@@ -509,7 +509,7 @@ name", e `appData` no macOS é `~/Library/Application Support`.
 Ou seja, na prática:
 
 ```
-~/Library/Application Support/GetThatText/dicionario.json
+~/Library/Application Support/GetThatText/dictionary.json
 ```
 
 Notas:
@@ -614,7 +614,7 @@ Justificativa em uma linha por candidato:
 
 ### Formato
 
-Um `dicionario.json` em `~/Library/Application Support/<App>/`, arranjo ordenado de
+Um `dictionary.json` em `~/Library/Application Support/<App>/`, arranjo ordenado de
 `{ term, heard?[], context? }`.
 
 - `term` obrigatório → alimenta a lista plana no system prompt do Groq (1,75 tok/termo).

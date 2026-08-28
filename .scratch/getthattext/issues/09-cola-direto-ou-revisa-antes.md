@@ -56,4 +56,4 @@ E o custo de descobrir é **assimétrico**: no momento em que você nota que o G
 
 **Decisão de rotina, tomada sem consulta:** o menu não mostra prévia do texto reescrito. Item de menu com parágrafo truncado é feio e é estado a mais para manter, e o check mais o som já fecham o ciclo. Ver o texto é para quando se desconfia — e aí se cola.
 
-**Isso viabiliza [Aprender correções automaticamente](./19-aprender-correcoes-automaticamente.md).** Guardar o cru ao lado do reescrito é precisamente o que permite ao app saber o que o Groq corrigiu e oferecer "quer fixar?". A janela de vida em memória dá o momento certo para essa oferta, e as regras fixadas iriam para o `dicionario.json` — que é dicionário, não histórico.
+**Isso viabiliza [Aprender correções automaticamente](./19-aprender-correcoes-automaticamente.md).** Guardar o cru ao lado do reescrito é precisamente o que permite ao app saber o que o Groq corrigiu e oferecer "quer fixar?". A janela de vida em memória dá o momento certo para essa oferta, e as regras fixadas iriam para o `dictionary.json` — que é dicionário, não histórico.

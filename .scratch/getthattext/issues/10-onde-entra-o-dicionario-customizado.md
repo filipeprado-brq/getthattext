@@ -34,7 +34,7 @@ Achados completos, com o custo em tokens medido nos tokenizers reais: [`research
 
 **Ordem importa:** substituição determinística roda **antes** do Groq. Ao contrário, ela desfaria escolhas boas do LLM.
 
-**Formato:** `dicionario.json` em `~/Library/Application Support/<App>/`, arranjo ordenado de `{ term, heard?[], context? }`. **`heard[]` é opcional de propósito** — o usuário não sabe de antemão como o Whisper vai errar "shadcn"; ele descobre errando.
+**Formato:** `dictionary.json` em `~/Library/Application Support/<App>/`, arranjo ordenado de `{ term, heard?[], context? }`. **`heard[]` é opcional de propósito** — o usuário não sabe de antemão como o Whisper vai errar "shadcn"; ele descobre errando.
 
 **Números que importam:**
 
