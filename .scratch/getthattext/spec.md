@@ -12,7 +12,9 @@ Cada decisão abaixo aponta para o ticket que a decidiu. Onde houver dúvida, o 
 
 ## 1. Fluxo do usuário
 
-1. **Clique esquerdo no ícone** da barra de menu, ou o atalho global **`⌃⌥⌘G`**. Os dois alternam: começam e param. → [Orçamento de latência](./issues/18-orcamento-de-latencia.md) · [Qual é o atalho](./issues/07-qual-e-o-atalho.md)
+1. **Clique esquerdo no ícone** da barra de menu, ou o atalho global **`⌥⌘G`**. Os dois alternam: começam e param. → [Orçamento de latência](./issues/18-orcamento-de-latencia.md) · [Qual é o atalho](./issues/07-qual-e-o-atalho.md)
+
+   > **Corrigido na implementação do #5.** O padrão era `⌃⌥⌘G`. Três modificadores é uma garra, e o ticket 07 escolheu aquilo quando o gatilho ainda era push-to-talk, onde só importava segurar confortavelmente. `⌥⌘` são adjacentes no teclado, e nos 43 atalhos de sistema habilitados na máquina de desenvolvimento `⌥⌘` só toma `D` e `Space`.
 2. O app abre o microfone. O ícone mostra **"abrindo"** e só passa a **"gravando"** quando o primeiro frame de áudio realmente chega. → [Captura de áudio](./issues/04-captura-de-audio-no-electron.md)
 3. Você fala. O ícone fica **vermelho, respirando a 1,7 s**. Limite de **2 minutos**; ao bater, para e processa normalmente. → [Forma do indicador](./issues/11-forma-do-indicador-de-estado.md) · [Orçamento de latência](./issues/18-orcamento-de-latencia.md)
 4. **Clique ou atalho de novo** para parar. O microfone fecha imediatamente. → [Janela de microfone aberto](./issues/17-janela-de-microfone-aberto.md)
@@ -219,7 +221,7 @@ Monocromático (`template image`, o sistema tinge) **exceto vermelho ao gravar**
 ### Menu (clique direito)
 
 ```
-Ditar                          ⌃⌥⌘G
+Ditar                           ⌥⌘G
 ─────────────────────────────
 Copiar transcrição crua          (desabilitado se não houver)
 ─────────────────────────────
@@ -231,7 +233,11 @@ Sair                             ⌘Q
 
 ### Preferências
 
-Atalho (com **aviso visível de conflito** — `globalShortcut.register` retorna `false` e isso não pode falhar em silêncio) · modelo do Whisper · idioma · reescrever com IA (on/off) · som (on/off) · abrir no login · API key do Groq.
+Atalho (com **teste de recebimento** — ver a correção abaixo) · modelo do Whisper · idioma · reescrever com IA (on/off) · som (on/off) · abrir no login · API key do Groq.
+
+> **Corrigido na implementação do #5.** Esta linha dizia que o aviso de conflito viria de `globalShortcut.register` retornar `false`. **Ele nunca retorna `false`** no macOS 15 / Electron 41.7.1 — medido com outro processo segurando a mesma combinação e com hotkeys do sistema (`⌘Space`, `⌘Tab`, `⇧⌘3`, `⌥⌘D`): todas aceitas. `isRegistered` só enxerga o que o próprio app registrou.
+>
+> Não existe detecção de conflito pela API. A verificação honesta é pedir para a pessoa **apertar o atalho e confirmar que chegou** — nas preferências (#9) e no onboarding (#10). E o aviso precisa falar de **possibilidade**, nunca afirmar detecção: um atalho global tem precedência sobre atalho de menu de aplicativo, então a escolha pode tomar o atalho de outro programa em silêncio.
 
 ---
 
