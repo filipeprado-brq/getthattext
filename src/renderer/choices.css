@@ -1,0 +1,48 @@
+/*
+  As opções de modelo, compartilhadas pelo onboarding e pelas preferências.
+  Ficavam duplicadas nos dois arquivos e já tinham divergido sozinhas — uma
+  marcava "no disco", a outra "falta", invertendo o sentido da mesma classe.
+*/
+#choices { display: flex; flex-direction: column; gap: 6px; }
+
+.choice {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--paper);
+}
+.choice:hover { border-color: var(--accent); }
+.choice.picked {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--paper));
+}
+.choice input { margin: 0; accent-color: var(--accent); }
+
+.choice-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.choice-size { font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.choice-tradeoff {
+  grid-column: 2 / -1;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
+/* Só um sentido para a classe: `absent` = ainda não está no disco. */
+.choice.absent .choice-size::after { content: " · falta baixar"; }

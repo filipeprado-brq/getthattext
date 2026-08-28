@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { MODELS } from "../shared/models";
+import { VAD_MODEL } from "../shared/models";
 import { binaryPath } from "./binaries";
 import { modelPath, modelsDir } from "./models";
 import { preferences } from "./preferences";
@@ -23,12 +23,14 @@ export const whisperBin = (): string => binaryPath(WHISPER_CLI);
 export const vadBin = (): string => binaryPath(VAD_CLI);
 
 /**
- * O modelo do portão, vindo do catálogo.
+ * O modelo do portão, vindo do catálogo POR NOME.
  *
- * Não é escolha do usuário, e não é literal repetido: escrever o nome aqui
- * e em `shared/models.ts` faria trocar o modelo exigir duas edições.
+ * Já foi `MODELS[1]`, para não repetir o literal. Quando o catálogo passou a
+ * oferecer três modelos de transcrição, o índice 1 virou `small-q5_1` — e o
+ * portão passou a ser invocado com um modelo de transcrição que nem estava
+ * no disco. Índice posicional não é referência: é uma aposta na ordem.
  */
-const VAD_MODEL_FILE = MODELS[1]!.file;
+const VAD_MODEL_FILE = VAD_MODEL.file;
 
 /** Os modelos de transcrição presentes, para a tela de preferências listar. */
 export function availableModels(): string[] {

@@ -13,7 +13,7 @@ import {
   STEPS,
 } from "../shared/onboardingSteps.js";
 import { acceleratorToSymbols } from "../shared/shortcut.js";
-import { el } from "./dom.js";
+import { el, paintChoices } from "./dom.js";
 
 /**
  * A primeira abertura, como wizard.
@@ -165,66 +165,25 @@ function paintBars(): void {
   );
 }
 
-/**
- * As opções de modelo.
- *
- * Cada uma mostra o que se PERDE, não só o tamanho. Os números vieram do
- * corpus completo (30 amostras): o compacto fica em 93,3% de similaridade
- * agregada e perde METADE dos termos técnicos — nome de arquivo, camelCase
- * e sigla, que é o que este app existe para preservar. Oferecer só "190 MB"
- * seria oferecer uma armadilha.
- */
-function paintChoices(): void {
+/** As opções de modelo, com o que se perde à vista. */
+function paintModelChoices(): void {
   if (!state) return;
 
-  const present = new Set(
-    state.models.filter((model) => model.present).map((model) => model.file),
-  );
-
-  choices.replaceChildren(
-    ...TRANSCRIPTION_MODELS.map((model) => {
-      const picked = model.file === state?.chosenModel;
-
-      const option = document.createElement("label");
-      option.className = `choice${picked ? " picked" : ""}${present.has(model.file) ? " here" : ""}`;
-
-      const radio = document.createElement("input");
-      radio.type = "radio";
-      radio.name = "model";
-      radio.checked = picked;
-      radio.addEventListener("change", () => {
-        void window.onboardingBridge
-          .chooseModel(model.file)
-          .then((updated) => {
-            state = updated;
-            paint();
-          })
-          .catch((error: unknown) => say(reason(error)));
-      });
-
-      const name = document.createElement("span");
-      name.className = "choice-name";
-      name.textContent = model.name;
-      if (model.recommended) {
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = "recomendado";
-        name.append(badge);
-      }
-
-      const size = document.createElement("span");
-      size.className = "choice-size";
-      size.textContent = formatBytes(model.bytes);
-
-      const tradeoff = document.createElement("span");
-      tradeoff.className = "choice-tradeoff";
-      tradeoff.textContent = model.tradeoff;
-
-      option.append(radio, name, size, tradeoff);
-
-      return option;
-    }),
-  );
+  paintChoices(choices, {
+    models: TRANSCRIPTION_MODELS,
+    chosen: state.chosenModel,
+    present: state.models.filter((m) => m.present).map((m) => m.file),
+    format: formatBytes,
+    onPick: (file) => {
+      void window.onboardingBridge
+        .chooseModel(file)
+        .then((updated) => {
+          state = updated;
+          paint();
+        })
+        .catch((error: unknown) => say(reason(error)));
+    },
+  });
 }
 
 /** O recado do atalho, com a combinação em destaque no meio. */
@@ -260,12 +219,13 @@ function paint(): void {
       ? "Os modelos estão no lugar."
       : "A transcrição roda nesta máquina, então o modelo fica aqui. " +
         "Escolha o que faz sentido para o que você dita.";
-  modelsGet.hidden = missing.length === 0;
+  // Sem nada a baixar o botão vira "Continuar", em vez de sumir e deixar o
+  // passo sem saída — `chooseModel` redesenha, não avança sozinho.
   modelsGet.textContent =
     missing.length === 0
-      ? "Baixar"
+      ? "Continuar"
       : `Baixar ${formatBytes(missing.reduce((total, m) => total + m.bytes, 0))}`;
-  paintChoices();
+  paintModelChoices();
   paintBars();
 
   keyInput.placeholder = state.hasApiKey ? "•••••••• (guardada)" : "gsk_…";
@@ -313,6 +273,12 @@ micSettings.addEventListener("click", () => {
 });
 
 modelsGet.addEventListener("click", () => {
+  if (state?.models.every((model) => model.present)) {
+    advance();
+
+    return;
+  }
+
   modelsGet.disabled = true;
   modelsGet.textContent = "Baixando…";
   say("");

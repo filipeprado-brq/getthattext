@@ -30,6 +30,7 @@ import { dictionary, saveDictionary } from "./dictionary";
 import { loginItem, setLoginItem } from "./loginItem";
 import {
   discardModel,
+  discardUnchosenModels,
   downloadModel,
   hasRoomForAll,
   isModelIntact,
@@ -457,6 +458,11 @@ ipcMain.handle("onboarding-download", async (event) => {
   } finally {
     event.sender.off("destroyed", stop);
   }
+
+  // Só agora: o escolhido está no disco e verificado, então guardar os
+  // outros seria só ocupar espaço.
+  const removed = await discardUnchosenModels(chosen);
+  if (removed.length > 0) console.log(`modelos removidos: ${removed.join(", ")}`);
 
   return onboardingState();
 });

@@ -73,36 +73,3 @@ input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var
   letter-spacing: normal;
 }
 
-/* As opções de modelo, iguais às do onboarding: o que se perde à vista. */
-#choices { display: flex; flex-direction: column; gap: 5px; }
-
-.choice {
-  display: grid;
-  grid-template-columns: 15px 1fr auto;
-  gap: 3px 9px;
-  align-items: baseline;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  cursor: pointer;
-  background: var(--paper);
-}
-.choice:hover { border-color: var(--accent); }
-.choice.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
-.choice input { margin: 0; accent-color: var(--accent); }
-
-.choice-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
-.choice-size { font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.choice-tradeoff { grid-column: 2 / -1; font-size: 11px; color: var(--ink-soft); line-height: 1.4; }
-
-.badge {
-  display: inline-block;
-  margin-left: 6px; padding: 0 5px;
-  border-radius: 8px;
-  background: var(--accent); color: #fff;
-  font-size: 9.5px; font-weight: 600;
-  vertical-align: 1px;
-}
-
-/* O que ainda não está no disco: baixar acontece ao escolher. */
-.choice.absent .choice-size::after { content: " · baixa ao escolher"; }

@@ -1,6 +1,6 @@
 import type { PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
-import { el } from "./dom.js";
+import { el, paintChoices } from "./dom.js";
 import { formatBytes, TRANSCRIPTION_MODELS } from "../shared/models.js";
 import { LANGUAGES } from "../shared/preferences.js";
 import { acceleratorFromChord, acceleratorToSymbols } from "../shared/shortcut.js";
@@ -20,8 +20,8 @@ const loginBox = el<HTMLInputElement>("login");
 const loginNote = el("login-note");
 const status = el("status");
 
-/** O atalho em vigor, para os recados não dependerem do DOM. */
-let chosen = "";
+/** O ATALHO em vigor, para os recados não dependerem do DOM. */
+let activeShortcut = "";
 
 function say(message: string): void {
   status.textContent = message;
@@ -45,15 +45,21 @@ async function save(patch: Parameters<typeof window.preferencesBridge.save>[0]) 
 function render(snapshot: PreferencesSnapshot): void {
   const { preferences, models, loginItem, hasApiKey } = snapshot;
 
-  chosen = preferences.shortcut;
-  shortcutOutput.textContent = acceleratorToSymbols(chosen);
-  showShortcutNote(chosen);
+  activeShortcut = preferences.shortcut;
+  shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
+  showShortcutNote(activeShortcut);
 
   languageSelect.replaceChildren(
     ...LANGUAGES.map(({ code, label }) => new Option(label, code, false, code === preferences.language)),
   );
 
-  paintChoices(preferences.model, models);
+  paintChoices(choices, {
+    models: TRANSCRIPTION_MODELS,
+    chosen: preferences.model,
+    present: models,
+    format: formatBytes,
+    onPick: (file) => void save({ model: file }),
+  });
   note(
     modelNote,
     models.includes(preferences.model)
@@ -87,54 +93,6 @@ function render(snapshot: PreferencesSnapshot): void {
  * `register` aceita qualquer coisa — medido. Dizer só depois de um teste que
  * falhou seria tarde e fala da direção oposta.
  */
-/**
- * As opções de modelo, iguais às do onboarding.
- *
- * Mostra o que se PERDE, não só o tamanho: os números vieram do corpus
- * completo, e "similaridade" engana — o compacto fica em 93,3% no agregado
- * e perde metade dos termos técnicos.
- */
-function paintChoices(chosen: string, present: readonly string[]): void {
-  choices.replaceChildren(
-    ...TRANSCRIPTION_MODELS.map((model) => {
-      const picked = model.file === chosen;
-
-      const option = document.createElement("label");
-      option.className = `choice${picked ? " picked" : ""}${
-        present.includes(model.file) ? "" : " absent"
-      }`;
-
-      const radio = document.createElement("input");
-      radio.type = "radio";
-      radio.name = "model";
-      radio.checked = picked;
-      radio.addEventListener("change", () => void save({ model: model.file }));
-
-      const name = document.createElement("span");
-      name.className = "choice-name";
-      name.textContent = model.name;
-      if (model.recommended) {
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = "recomendado";
-        name.append(badge);
-      }
-
-      const size = document.createElement("span");
-      size.className = "choice-size";
-      size.textContent = formatBytes(model.bytes);
-
-      const tradeoff = document.createElement("span");
-      tradeoff.className = "choice-tradeoff";
-      tradeoff.textContent = model.tradeoff;
-
-      option.append(radio, name, size, tradeoff);
-
-      return option;
-    }),
-  );
-}
-
 function showShortcutNote(accelerator: string): void {
   note(
     shortcutNote,
@@ -231,8 +189,8 @@ function startRecording(): void {
     recordButton.disabled = false;
     testButton.disabled = false;
     shortcutOutput.classList.remove("recording");
-    shortcutOutput.textContent = acceleratorToSymbols(chosen);
-    showShortcutNote(chosen);
+    shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
+    showShortcutNote(activeShortcut);
   };
 
   window.addEventListener("keydown", onKey, true);
@@ -254,13 +212,13 @@ testButton.addEventListener("click", () => {
   testButton.disabled = true;
   testButton.dataset["listening"] = "true";
   testButton.textContent = "Aperte agora…";
-  note(shortcutNote, `Aperte ${acceleratorToSymbols(chosen)}.`);
+  note(shortcutNote, `Aperte ${acceleratorToSymbols(activeShortcut)}.`);
 
   void window.preferencesBridge
     .testShortcut()
     .then((result) => {
       if (result === "cancelled") {
-        showShortcutNote(chosen);
+        showShortcutNote(activeShortcut);
 
         return;
       }

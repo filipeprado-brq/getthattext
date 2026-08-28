@@ -12,6 +12,7 @@ import {
   MODELS,
   planDownload,
   requiredModels,
+  TRANSCRIPTION_MODELS,
 } from "../shared/models";
 
 /**
@@ -235,4 +236,25 @@ export async function downloadModel(
 export async function discardModel(model: Model): Promise<void> {
   await rm(modelPath(model.file), { force: true });
   await rm(`${modelPath(model.file)}.part`, { force: true });
+}
+
+/**
+ * Apaga os modelos de transcrição que não são o escolhido.
+ *
+ * Roda DEPOIS que o escolhido já está íntegro no disco, nunca antes: trocar
+ * de modelo e cancelar o download deixaria você sem nenhum.
+ *
+ * Sem isto, trocar Completo → Compacto deixaria 574 MB parados para sempre,
+ * sem aviso e sem forma de remover pela interface — e guardar os três
+ * custaria 824 MB, pior que o problema que a escolha resolve.
+ */
+export async function discardUnchosenModels(chosen: string): Promise<string[]> {
+  const keep = requiredModels(chosen).map(({ file }) => file);
+  const extra = TRANSCRIPTION_MODELS.filter(
+    (model) => !keep.includes(model.file) && isModelPresent(model),
+  );
+
+  for (const model of extra) await discardModel(model);
+
+  return extra.map(({ file }) => file);
 }

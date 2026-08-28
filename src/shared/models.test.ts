@@ -36,9 +36,9 @@ describe("o catálogo", () => {
   });
 
   it("um só é recomendado, e é o que preserva termo técnico", () => {
-    const recomendados = TRANSCRIPTION_MODELS.filter((m) => m.recommended);
-    expect(recomendados).toHaveLength(1);
-    expect(recomendados[0]?.file).toBe(RECOMMENDED_MODEL);
+    const recommended = TRANSCRIPTION_MODELS.filter((m) => m.recommended);
+    expect(recommended).toHaveLength(1);
+    expect(recommended[0]?.file).toBe(RECOMMENDED_MODEL);
   });
 
   it("cada opção diz o que se perde, não só o tamanho", () => {
@@ -94,6 +94,8 @@ describe("planDownload", () => {
   });
 
   it("com MAIS bytes que o esperado, descarta e recomeça", () => {
+    // Retomar a partir daí pediria um range além do fim e o servidor
+    // responderia 416 — ou pior, o arquivo ficaria com lixo no meio.
     expect(planDownload(model, model.bytes + 1)).toEqual({ kind: "restart" });
   });
 
@@ -110,6 +112,8 @@ describe("progressPercent", () => {
   });
 
   it("não passa de 100 nem fica negativo", () => {
+    // Um servidor que manda mais do que prometeu não pode virar uma barra
+    // de 140%.
     expect(progressPercent(300, 200)).toBe(100);
     expect(progressPercent(-1, 200)).toBe(0);
   });
@@ -121,11 +125,16 @@ describe("progressPercent", () => {
 
 describe("formatBytes", () => {
   it("usa unidade legível", () => {
+    // A regra 3 proíbe formatar número à mão; quem arredonda e põe o
+    // separador é o Intl.
     expect(formatBytes(885_098)).toMatch(/kB$/);
     expect(formatBytes(2_500_000_000)).toMatch(/GB$/);
   });
 
   it("usa unidade DECIMAL, como o Finder", () => {
+    // A spec diz "547 MiB" (binário) e o Finder diz "574 MB" (decimal) para
+    // o mesmo arquivo. A tela mostra o número que você vê no Finder, senão
+    // parece que baixou o modelo errado.
     expect(formatBytes(574_041_195)).toBe("574 MB");
   });
 
@@ -142,5 +151,27 @@ describe("bytesNeeded", () => {
     expect(bytesNeeded(needed, [])).toBe(total);
     expect(bytesNeeded(needed, [VAD_MODEL.file])).toBe(total - VAD_MODEL.bytes);
     expect(bytesNeeded(needed, needed.map((m) => m.file))).toBe(0);
+  });
+});
+
+describe("o portão de fala não pode ser confundido", () => {
+  it("VAD_MODEL não é nenhum modelo de transcrição", () => {
+    // Isto existe porque aconteceu: o whisper.ts pegava o modelo do portão
+    // por `MODELS[1]`, e quando o catálogo passou a oferecer três opções de
+    // transcrição o índice 1 virou `small-q5_1`. O portão passou a ser
+    // chamado com um modelo de transcrição que nem estava no disco.
+    for (const model of TRANSCRIPTION_MODELS) {
+      expect(model.file).not.toBe(VAD_MODEL.file);
+    }
+  });
+
+  it("é sempre exigido, seja qual for a escolha", () => {
+    for (const model of TRANSCRIPTION_MODELS) {
+      expect(requiredModels(model.file).map((m) => m.file)).toContain(VAD_MODEL.file);
+    }
+  });
+
+  it("está no catálogo completo, para ser baixado e verificado", () => {
+    expect(MODELS.map((m) => m.file)).toContain(VAD_MODEL.file);
   });
 });
