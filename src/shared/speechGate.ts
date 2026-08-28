@@ -18,7 +18,21 @@
  * `whisper-cli`, aqui não há armadilha de `--output-*`: este binário imprime
  * a contagem no stdout sozinho.
  *
- * O limiar (`-vt`) fica no default de 0,50 — o valor que o corpus mediu.
+ * O limiar (`-vt`) fica no default de 0,50, o valor que o corpus mediu.
+ *
+ * ATENÇÃO, medido depois: 0,50 foi validado contra um corpus gravado com
+ * `rec` (sox), captura crua do device — não contra o áudio deste app, que
+ * vem do `getUserMedia` e passa pelo AGC, pelo supressor de ruído e pelo
+ * cancelador de eco do Chromium. São cadeias de sinal diferentes, e a
+ * diferença aparece: uma gravação sem fala feita pelo app (RMS 0,0045,
+ * contra 0,0011 do silêncio do corpus) produziu 1 segmento e passou pelo
+ * portão. A fala tem folga de 7,8x e não é afetada — só o silêncio vive na
+ * faixa estreita onde a discrepância decide.
+ *
+ * Varredura medida: o falso positivo some em 0,60, e nenhuma amostra de
+ * fala do corpus perde o único segmento que o portão exige, nem em 0,95.
+ * Subir o limiar e casar a cadeia de captura são os dois caminhos; nenhum
+ * foi tomado ainda por falta de mais de uma amostra de silêncio do app.
  */
 export function buildVadArgs(modelPath: string): string[] {
   return [

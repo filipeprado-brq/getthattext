@@ -26,8 +26,11 @@ describe("buildVadArgs", () => {
   });
 
   it("não fixa o limiar, deixando o default de 0,50", () => {
-    // 0,50 é o valor que acertou 6 de 6 no corpus, incluindo a fala mais
-    // baixa. Repetir o número aqui só criaria uma segunda fonte da verdade.
+    // 0,50 acertou 6 de 6 no corpus, e repetir o número aqui só criaria
+    // uma segunda fonte da verdade. O teste trava a AUSÊNCIA da flag, não
+    // o valor — de propósito: o default é questão aberta (spec §13, e uma
+    // medição posterior achou falso positivo no silêncio capturado pelo
+    // próprio app). Quando o número for decidido, é aqui que ele entra.
     expect(args).not.toContain("-vt");
     expect(args).not.toContain("--vad-threshold");
   });
