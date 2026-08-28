@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+    a { color: #0a84ff; } a:hover { color: #0060df; }
+  </style>
+</helmet>
+
+<div style="width: 520px; height: 740px; box-sizing: border-box; padding: 28px; background: #ffffff; display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="font-size: 18px; font-weight: 600; color: #1c1c1e; letter-spacing: -0.01em;">O traço da bandeja</span>
+    <span style="font-size: 13px; line-height: 1.5; color: #6b6b70;">O mesmo glifo da barra de menu, ampliado e nada mais. Coerência máxima: o ícone do Finder e o da bandeja são o mesmo desenho.</span>
+  </div>
+
+  <div style="background: #f4f4f5; border-radius: 14px; padding: 30px; display: flex; justify-content: center; align-items: center;">
+    <svg width="260" height="260" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="O traço da bandeja">
+      <defs>
+        <symbol id="icon-b" viewBox="0 0 1024 1024"><rect x="100" y="100" width="824" height="824" rx="185" fill="#fbfbfc"/><rect x="101" y="101" width="822" height="822" rx="184" fill="none" stroke="#dcdcde" stroke-width="2"/><g transform="translate(512 512) scale(30) translate(-9 -9)"><rect x="6.25" y="2.25" width="5.5" height="8.5" rx="2.75" stroke="#1c1c1e" stroke-width="1.4" fill="none"/><path d="M3.75 8.5v.75a5.25 5.25 0 0 0 10.5 0V8.5" stroke="#1c1c1e" stroke-width="1.4" stroke-linecap="round" fill="none"/><path d="M9 14.5v1.75" stroke="#1c1c1e" stroke-width="1.4" stroke-linecap="round" fill="none"/></g></symbol>
+      </defs>
+      <use href="#icon-b"/>
+    </svg>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 28px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="128" height="128" viewBox="0 0 1024 1024"><use href="#icon-b"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">128 · Finder</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="64" height="64" viewBox="0 0 1024 1024"><use href="#icon-b"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">64</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="32" height="32" viewBox="0 0 1024 1024"><use href="#icon-b"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">32 · Ajustes</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="16" height="16" viewBox="0 0 1024 1024"><use href="#icon-b"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">16 · lista</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto; border-top: 1px solid #dcdcde; padding-top: 16px;">
+    <div style="display: flex; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 600; color: #1c1c1e; width: 58px; flex: none;">Ganha</span>
+      <span style="font-size: 12px; line-height: 1.5; color: #6b6b70;">Quem vê o ícone reconhece a bandeja na hora. Nenhum desenho novo para manter — muda um, muda o outro.</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 600; color: #1c1c1e; width: 58px; flex: none;">Custa</span>
+      <span style="font-size: 12px; line-height: 1.5; color: #6b6b70;">É o ícone de microfone que todo app de ditado tem. No Launchpad, ao lado de dois concorrentes, nada distingue os três.</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

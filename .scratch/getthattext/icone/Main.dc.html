@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+    a { color: #0a84ff; } a:hover { color: #0060df; }
+  </style>
+</helmet>
+
+<div style="width: 520px; height: 740px; box-sizing: border-box; padding: 28px; background: #ffffff; display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="display: flex; align-items: baseline; gap: 8px;">
+      <span style="font-size: 18px; font-weight: 600; color: #1c1c1e; letter-spacing: -0.01em;">Ponto vermelho</span>
+      <span style="font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #ffffff; background: #ff3b30; padding: 2px 7px 3px; border-radius: 9px;">escolhido</span>
+    </div>
+    <span style="font-size: 13px; line-height: 1.5; color: #6b6b70;">O estado gravando promovido a identidade: a cápsula vermelha do glifo da bandeja, sobre grafite. Está no app — <code style="font-family: ui-monospace, monospace; font-size: 12px;">build/icon.icns</code>, gerado por <code style="font-family: ui-monospace, monospace; font-size: 12px;">npm run build:icon</code>.</span>
+  </div>
+
+  <div style="background: #f4f4f5; border-radius: 14px; padding: 30px; display: flex; justify-content: center; align-items: center;">
+    <svg width="260" height="260" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ícone: cápsula vermelha sobre grafite">
+      <defs>
+        <linearGradient id="slab" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3a3a3f"/>
+          <stop offset="1" stop-color="#1c1c1e"/>
+        </linearGradient>
+        <symbol id="icon-a" viewBox="0 0 1024 1024">
+          <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#slab)"/>
+          <g transform="translate(512 512) scale(30) translate(-9 -9)">
+            <rect x="6.25" y="2.25" width="5.5" height="8.5" rx="2.75" fill="#ff3b30"/>
+            <path d="M3.75 8.5v.75a5.25 5.25 0 0 0 10.5 0V8.5" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+            <path d="M9 14.5v1.75" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          </g>
+        </symbol>
+      </defs>
+      <use href="#icon-a"/>
+    </svg>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 28px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="128" height="128" viewBox="0 0 1024 1024"><use href="#icon-a"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">128 · Finder</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="64" height="64" viewBox="0 0 1024 1024"><use href="#icon-a"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">64</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="32" height="32" viewBox="0 0 1024 1024"><use href="#icon-a"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">32 · Ajustes</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+      <svg width="16" height="16" viewBox="0 0 1024 1024"><use href="#icon-a"/></svg>
+      <span style="font-size: 10px; color: #6b6b70; font-variant-numeric: tabular-nums;">16 · lista</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto; border-top: 1px solid #dcdcde; padding-top: 16px;">
+    <div style="display: flex; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 600; color: #1c1c1e; width: 58px; flex: none;">Ganha</span>
+      <span style="font-size: 12px; line-height: 1.5; color: #6b6b70;">Inconfundível a 16 px: uma pastilha vermelha e um arco branco. Usa a única cor que o app já tem, sem inventar paleta.</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 600; color: #1c1c1e; width: 58px; flex: none;">Custa</span>
+      <span style="font-size: 12px; line-height: 1.5; color: #6b6b70;">Vermelho diz "gravando" o tempo todo, inclusive quando o app está parado — e no Finder ele fica ao lado de ícones que usam vermelho para erro.</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

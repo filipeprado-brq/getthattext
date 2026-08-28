@@ -1,0 +1,76 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 520,
+      "h": 740,
+      "page": "page-1"
+    },
+    {
+      "file": "Traco.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 520,
+      "h": 740,
+      "page": "page-2"
+    },
+    {
+      "file": "Transformacao.dc.html",
+      "x": 600,
+      "y": 0,
+      "w": 520,
+      "h": 740,
+      "page": "page-2"
+    },
+    {
+      "file": "Prancheta.dc.html",
+      "x": 1200,
+      "y": 0,
+      "w": 520,
+      "h": 740,
+      "page": "page-2"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "briefing",
+      "page": "page-1",
+      "x": 0,
+      "y": -190,
+      "w": 520,
+      "text": "Escolhido e implementado.\n\nO desenho usa a geometria real do glifo da bandeja e a grade do macOS: squircle de 824 px, raio 185, centrado em 1024. A geometria agora mora num lugar só (scripts/mic-glyph.js), lida pelos dois ícones — o de 18 pt da barra e o de 1024 px do app."
+    },
+    {
+      "id": "escala",
+      "page": "page-1",
+      "x": 600,
+      "y": -190,
+      "w": 460,
+      "text": "A régua de tamanhos não é enfeite: o ícone aparece a 16 px na lista de Itens de Início e a 32 px em Ajustes → Privacidade → Microfone, que é onde a pessoa vai procurá-lo."
+    },
+    {
+      "id": "descartadas",
+      "page": "page-2",
+      "x": 0,
+      "y": -150,
+      "w": 520,
+      "text": "As três não escolhidas, guardadas com o motivo de cada uma. Ficam aqui porque a decisão é reversível: se o vermelho constante incomodar no Finder, 'O traço da bandeja' é a volta mais barata."
+    }
+  ],
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Escolhido"
+    },
+    {
+      "id": "page-2",
+      "name": "Não escolhidas"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

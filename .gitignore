@@ -24,3 +24,7 @@ release/
 
 # As fotos das janelas são artefato de verificação, não fonte.
 .scratch/shots/
+
+# O payload do canvas de design é artefato de publicação, não fonte.
+.scratch/getthattext/icone/icone-getthattext.html
+.scratch/getthattext/icone/recebido/
