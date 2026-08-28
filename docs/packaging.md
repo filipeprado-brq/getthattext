@@ -76,7 +76,24 @@ Signature=adhoc
 
 ---
 
-## 4. Quem recebe o app
+## 4. Mandar
+
+```bash
+cd release/mac-arm64
+ditto -c -k --sequesterRsrc --keepParent getthattext.app getthattext.zip
+```
+
+`ditto` e não `zip`: ele preserva os metadados que a assinatura de código
+usa. Um `.zip` feito com o `zip` comum pode quebrar a verificação do outro
+lado.
+
+Saem ~117 MB — o `.app` de 271 MB comprime bem porque é quase todo o
+framework do Electron.
+
+Verificado: a assinatura sobrevive à ida e volta, e os binários chegam
+íntegros.
+
+## 5. Quem recebe o app
 
 Um `.app` que chega por download, AirDrop ou pen drive ganha o atributo
 `com.apple.quarantine`, e o Gatekeeper bloqueia porque a assinatura ad-hoc
@@ -90,6 +107,22 @@ Ou abrir uma vez pelo menu de contexto → **Abrir**, e confirmar.
 
 App construído localmente não tem esse atributo, então na sua máquina ele
 abre direto.
+
+### O que avisar antes de mandar
+
+- **Precisa de Mac com Apple Silicon.** O bundle é `arm64` apenas. macOS 12
+  ou superior.
+- **A primeira abertura baixa 574 MB** de modelo, com barra de progresso.
+  Leva minutos numa conexão comum — sem o aviso, parece travado.
+- **A chave do Groq é dele.** A sua não vai junto: não está em nenhum
+  arquivo do repo nem no histórico do git. Ele cria a dele em
+  `console.groq.com`, e o nível gratuito basta. Ou pula: sem chave o app
+  entrega a transcrição crua.
+- **O dicionário dele começa vazio.** Os termos que você ensinou ficam na
+  sua máquina.
+- **Não há atualização automática.** Versão nova é mandar o arquivo de novo
+  — e, por causa da assinatura ad-hoc, ele recola a chave do Groq a cada
+  versão.
 
 ---
 
