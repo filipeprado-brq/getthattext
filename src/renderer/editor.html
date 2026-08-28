@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
     <title>Dicionário</title>
+    <link rel="stylesheet" href="./base.css" />
     <link rel="stylesheet" href="./editor.css" />
   </head>
   <body>
@@ -15,28 +16,39 @@
       O texto mostrado é o CRU, não o reescrito. Tem que ser: no reescrito os
       termos já saíram certos, e não sobraria erro em que clicar.
     -->
-    <section id="learn">
-      <h1>Como o Whisper ouviu</h1>
+    <main>
+      <div class="head-row">
+        <h1>Como o Whisper ouviu</h1>
+        <span class="when" id="when"></span>
+      </div>
       <p id="hint">
-        O texto cru do último ditado — antes do dicionário e antes da reescrita.
-        É o único lugar onde o erro ainda aparece.
-        <br />Clique na palavra errada; clique numa segunda para pegar o trecho.
+        O texto cru, antes do dicionário e antes da reescrita — o único lugar
+        onde o erro ainda aparece. Clique na palavra errada; clique numa
+        segunda para pegar o trecho inteiro.
       </p>
       <div id="heard-text" aria-label="transcrição crua"></div>
-      <form id="learn-form">
-        <label>Ouvido<input id="heard" autocomplete="off" spellcheck="false" /></label>
-        <span aria-hidden="true">→</span>
-        <label>Correto<input id="term" autocomplete="off" spellcheck="false" /></label>
-        <button id="submit" type="submit">Adicionar</button>
-      </form>
-      <p id="status" role="status"></p>
-    </section>
 
-    <section id="entries">
-      <h1>Termos <span id="count"></span></h1>
-      <div id="list"></div>
-      <button id="add-blank" type="button">Novo termo</button>
-    </section>
+      <form id="learn"></form>
+
+      <div class="head-row list">
+        <h1>Termos</h1>
+        <span class="count" id="count"></span>
+        <button id="add-blank" type="button">Novo termo</button>
+      </div>
+      <div class="terms">
+        <div class="terms-head">
+          <span>Correto</span>
+          <span>Como foi ouvido</span>
+          <span>Contexto</span>
+          <span aria-hidden="true"></span>
+        </div>
+        <div id="list"></div>
+      </div>
+    </main>
+
+    <footer>
+      <p id="status" role="status"></p>
+    </footer>
 
     <script type="module" src="./editor.js"></script>
   </body>

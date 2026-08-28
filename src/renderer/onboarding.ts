@@ -1,15 +1,11 @@
 import type { KeyCheck, ModelProgress } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
-import {
-  formatBytes,
-  progressPercent,
-  TRANSCRIPTION_MODELS,
-} from "../shared/models.js";
+import { formatBytes, TRANSCRIPTION_MODELS } from "../shared/models.js";
 import type { OnboardingState } from "../shared/onboarding.js";
 import { firstPending, isStepDone, type StepId, STEPS } from "../shared/onboardingSteps.js";
 import { PROVIDERS, providerFor } from "../shared/providers.js";
 import { acceleratorToSymbols } from "../shared/shortcut.js";
-import { el, paintChoices, sayInto } from "./dom.js";
+import { el, paintChoices, paintDownloads as paintList, sayInto } from "./dom.js";
 import { recordShortcut } from "./shortcutField.js";
 
 /**
@@ -103,15 +99,6 @@ const MICROPHONE: Readonly<
   },
 };
 
-const CHECK_ICON =
-  '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">' +
-  '<path d="M2.5 6.4 4.8 8.7 9.5 3.6" stroke="currentColor" stroke-width="1.8" ' +
-  'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ARROW_ICON =
-  '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">' +
-  '<path d="M6 1.8v6.4M3.4 5.8 6 8.4l2.6-2.6M2.4 10.2h7.2" stroke="currentColor" ' +
-  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
 /* ---------- desenho ---------- */
 
 /** A régua: o download não tem traço próprio, ele pertence a "Modelos". */
@@ -143,49 +130,19 @@ function nameOf(file: string, label: string): string {
 function paintDownloads(): void {
   if (!state) return;
 
-  bars.replaceChildren(
-    ...state.models.map((model) => {
+  paintList(
+    bars,
+    state.models.map((model) => {
       const seen = progress.get(model.file);
-      const received = model.present ? model.bytes : (seen?.received ?? 0);
-      const percent = model.present
-        ? 100
-        : progressPercent(received, seen?.total ?? model.bytes);
 
-      const item = document.createElement("div");
-      item.className = percent === 100 ? "download done" : "download";
-
-      const icon = document.createElement("div");
-      icon.className = "download-icon";
-      icon.innerHTML = percent === 100 ? CHECK_ICON : ARROW_ICON;
-
-      const head = document.createElement("div");
-      head.className = "download-head";
-      head.append(document.createTextNode(nameOf(model.file, model.label)));
-
-      const amount = document.createElement("span");
-      amount.textContent =
-        percent === 100
-          ? "pronto"
-          : `${formatBytes(received)} de ${formatBytes(model.bytes)}`;
-      head.append(amount);
-
-      const body = document.createElement("div");
-      const file = document.createElement("div");
-      file.className = "download-file";
-      file.textContent = model.file;
-
-      const track = document.createElement("div");
-      track.className = "bar-track";
-      const fill = document.createElement("div");
-      fill.className = "bar-fill";
-      fill.style.width = `${percent}%`;
-      track.append(fill);
-      body.append(file, track);
-
-      item.append(icon, head, body);
-
-      return item;
+      return {
+        title: nameOf(model.file, model.label),
+        file: model.file,
+        bytes: model.bytes,
+        received: model.present ? model.bytes : (seen?.received ?? 0),
+      };
     }),
+    formatBytes,
   );
 }
 

@@ -73,11 +73,6 @@ h1 {
 .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .grow { flex: 1; min-width: 0; }
 
-button.primary { background: var(--accent); border-color: transparent; color: #fff; padding: 5px 15px; }
-button.primary:disabled { background: var(--sunken); color: var(--ink-soft); border-color: var(--line); }
-button.quiet { background: none; border-color: transparent; color: var(--ink-soft); padding-left: 2px; }
-button.quiet:hover:not(:disabled) { color: var(--accent); }
-
 /* O botão só de ícone: os Ajustes do Sistema, que são a saída, não o caminho. */
 .icon-button {
   width: 28px;
@@ -139,44 +134,12 @@ button.quiet:hover:not(:disabled) { color: var(--accent); }
 }
 .form-grid label { font-size: 12.5px; color: var(--ink-soft); }
 .form-grid select { flex: 1; }
+/* A linha da chave não quebra: o campo encolhe antes dos dois botões. */
 .form-grid .controls { flex-wrap: nowrap; }
 
 .key-state { margin: 0; font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; }
 .key-state.ok { color: var(--accent); }
 .key-state.bad { color: var(--danger); }
-
-select {
-  font: inherit;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 5px 7px;
-}
-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-
-/* ---------- o atalho ---------- */
-.chord {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 92px;
-  padding: 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--sunken);
-  font-size: 15px;
-  letter-spacing: 0.05em;
-}
-.chord.recording {
-  background: var(--paper);
-  border-color: transparent;
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-  color: var(--ink-soft);
-  font-size: 12px;
-  letter-spacing: normal;
-}
 
 /* ---------- o rodapé, que nunca muda de linha ---------- */
 footer {

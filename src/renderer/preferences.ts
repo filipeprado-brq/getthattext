@@ -1,16 +1,10 @@
 import type { KeyCheck, ModelProgress, PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
-import {
-  activeModel,
-  formatBytes,
-  progressPercent,
-  TRANSCRIPTION_MODELS,
-  VAD_MODEL,
-} from "../shared/models.js";
+import { activeModel, formatBytes, TRANSCRIPTION_MODELS, VAD_MODEL } from "../shared/models.js";
 import { LANGUAGES } from "../shared/preferences.js";
 import { PROVIDERS, providerFor } from "../shared/providers.js";
 import { acceleratorToSymbols } from "../shared/shortcut.js";
-import { el, paintChoices, sayInto } from "./dom.js";
+import { el, paintChoices, paintDownloads as paintList, sayInto } from "./dom.js";
 import { recordShortcut } from "./shortcutField.js";
 
 /**
@@ -144,51 +138,22 @@ function paintTabs(): void {
   }
 }
 
-/** A lista do download, igual à do onboarding: um arquivo por linha. */
+/** A lista do download, a MESMA do wizard: um arquivo por linha. */
 function paintDownloads(): void {
   if (!snapshot) return;
 
   const chosen = TRANSCRIPTION_MODELS.find(({ file }) => file === snapshot?.preferences.model);
-  const files = [chosen, VAD_MODEL].filter((model) => model !== undefined);
+  const files = chosen ? [chosen, VAD_MODEL] : [VAD_MODEL];
 
-  downloads.replaceChildren(
-    ...files.map((model) => {
-      const seen = progress.get(model.file);
-      const received = seen?.received ?? 0;
-      const percent = progressPercent(received, seen?.total ?? model.bytes);
-
-      const item = document.createElement("div");
-      item.className = percent === 100 ? "download done" : "download";
-
-      const icon = document.createElement("div");
-      icon.className = "download-icon";
-
-      const head = document.createElement("div");
-      head.className = "download-head";
-      head.append(document.createTextNode("name" in model ? `Modelo ${model.name}` : model.label));
-
-      const amount = document.createElement("span");
-      amount.textContent =
-        percent === 100 ? "pronto" : `${formatBytes(received)} de ${formatBytes(model.bytes)}`;
-      head.append(amount);
-
-      const body = document.createElement("div");
-      const file = document.createElement("div");
-      file.className = "download-file";
-      file.textContent = model.file;
-
-      const track = document.createElement("div");
-      track.className = "bar-track";
-      const fill = document.createElement("div");
-      fill.className = "bar-fill";
-      fill.style.width = `${percent}%`;
-      track.append(fill);
-      body.append(file, track);
-
-      item.append(icon, head, body);
-
-      return item;
-    }),
+  paintList(
+    downloads,
+    files.map((model) => ({
+      title: "name" in model ? `Modelo ${model.name}` : model.label,
+      file: model.file,
+      bytes: model.bytes,
+      received: progress.get(model.file)?.received ?? 0,
+    })),
+    formatBytes,
   );
 }
 

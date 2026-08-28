@@ -1,0 +1,123 @@
+/*
+  A base das três janelas: tokens e os controles nativos.
+
+  Era o `editor.css`, que também trazia as regras da LISTA do dicionário —
+  `.row`, `.head`, `.chips`. As três janelas o carregam, então aquelas
+  classes desenhavam bordas em telas que nunca pediram: o wizard ganhou
+  traços em volta de cada linha de botões antes de alguém notar.
+
+  Aqui só entra o que as três usam. O que é de uma janela mora na folha
+  dela.
+*/
+:root {
+  --paper: #ffffff;
+  --sunken: #f4f4f5;
+  --ink: #1c1c1e;
+  --ink-soft: #6b6b70;
+  --line: #dcdcde;
+  --accent: #0a84ff;
+  /* O aviso que não é erro: falta baixar, potência intermediária. */
+  --warn: #b3730f;
+  --danger: #d7373f;
+  /* A explicação flutuante inverte o fundo, como a do sistema. */
+  --tip: #26262a;
+  --tip-ink: #f4f4f6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1e1e20;
+    --sunken: #292a2d;
+    --ink: #f2f2f4;
+    --ink-soft: #9a9aa0;
+    --line: #3a3a3e;
+    --accent: #4aa3ff;
+    --warn: #e0a63f;
+    --danger: #ff6b6b;
+    --tip: #3a3a3f;
+    --tip-ink: #f4f4f6;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/*
+  As janelas seguem a aparência do sistema em vez de inventar uma: são
+  utilitárias, de um app de barra de menu, e parecer nativas é o que as faz
+  sumir do caminho.
+*/
+body {
+  margin: 0;
+  padding: 18px 20px 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 7px;
+  width: 100%;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+input::placeholder { color: var(--ink-soft); }
+
+select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 7px;
+}
+select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+button {
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+button.primary { background: var(--accent); border-color: transparent; color: #fff; padding: 5px 15px; }
+button.primary:disabled { background: var(--sunken); color: var(--ink-soft); border-color: var(--line); }
+button.quiet { background: none; border-color: transparent; color: var(--ink-soft); padding-left: 2px; }
+button.quiet:hover:not(:disabled) { color: var(--accent); }
+
+/*
+  O atalho é MOSTRADO, não digitado: sintaxe de accelerator do Electron
+  ("Alt+Command+G") não deveria vazar para a interface.
+*/
+.chord {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--sunken);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.chord.recording {
+  background: var(--paper);
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  letter-spacing: normal;
+}

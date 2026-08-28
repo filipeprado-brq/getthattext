@@ -1,202 +1,181 @@
 /*
-  O editor segue a aparência do sistema em vez de inventar uma: é uma
-  janela utilitária de um app de barra de menu, e parecer nativa é o que a
-  faz sumir do caminho.
+  O dicionário. A metade de cima é o texto cru do último ditado; a de baixo,
+  os termos que ele já ensinou.
+
+  A barra do meio só aparece com seleção. Antes eram dois campos vazios
+  esperando digitação — e o furo que esta janela fecha nunca foi digitar a
+  entrada, foi LEMBRAR de cabeça como o Whisper escreveu errado.
 */
-:root {
-  --paper: #ffffff;
-  --sunken: #f4f4f5;
-  --ink: #1c1c1e;
-  --ink-soft: #6b6b70;
-  --line: #dcdcde;
-  --accent: #0a84ff;
-  /* O aviso que não é erro: falta baixar, potência intermediária. */
-  --warn: #b3730f;
-  --danger: #d7373f;
-  /* A explicação flutuante inverte o fundo, como a do sistema. */
-  --tip: #26262a;
-  --tip-ink: #f4f4f6;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #1e1e20;
-    --sunken: #292a2d;
-    --ink: #f2f2f4;
-    --ink-soft: #9a9aa0;
-    --line: #3a3a3e;
-    --accent: #4aa3ff;
-    --warn: #e0a63f;
-    --danger: #ff6b6b;
-    --tip: #3a3a3f;
-    --tip-ink: #f4f4f6;
-  }
-}
-
-* { box-sizing: border-box; }
-
 body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main { padding: 16px 20px 0; flex: 1; display: flex; flex-direction: column; }
+
+.head-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.head-row h1 {
   margin: 0;
-  padding: 18px 20px 24px;
-  background: var(--paper);
-  color: var(--ink);
-  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-h1 {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 0 0 8px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
 }
+.head-row .when,
+.head-row .count {
+  font: 10.5px/1 ui-monospace, "SF Mono", monospace;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.head-row .when { margin-left: auto; }
+.head-row button { margin-left: auto; padding: 3px 9px; font-size: 11.5px; }
 
-section + section { margin-top: 26px; }
-
-#hint { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+#hint { margin: 0 0 9px; font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); max-width: 72ch; }
 
 /* A transcrição crua, com as palavras clicáveis. */
 #heard-text {
   background: var(--sunken);
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   padding: 10px 12px;
-  min-height: 46px;
-  max-height: 150px;
+  height: 86px;
   overflow-y: auto;
   white-space: pre-wrap;
   font-size: 13.5px;
+  line-height: 1.6;
   user-select: none;
 }
-
-#heard-text .word {
-  cursor: pointer;
-  border-radius: 3px;
-  padding: 1px 0;
-}
+#heard-text .word { cursor: pointer; border-radius: 3px; padding: 1px 1px; }
 #heard-text .word:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 #heard-text .word.picked { background: var(--accent); color: #fff; }
+#heard-text.empty { color: var(--ink-soft); font-style: italic; display: flex; align-items: center; }
 
-#heard-text.empty {
-  color: var(--ink-soft);
-  font-style: italic;
+/* ---------- a barra de aprender ---------- */
+#learn {
   display: flex;
   align-items: center;
-}
-
-/* O formulário de aprender. */
-#learn-form {
-  display: flex;
-  align-items: flex-end;
   gap: 8px;
   margin-top: 10px;
-}
-#learn-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  font-size: 11px;
-  color: var(--ink-soft);
-}
-#learn-form span { padding-bottom: 6px; color: var(--ink-soft); }
-
-input {
-  font: inherit;
-  color: var(--ink);
+  padding: 8px 10px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 5px 7px;
-  width: 100%;
 }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+#learn.armed { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
+#learn .idle { font-size: 11.5px; color: var(--ink-soft); }
+#learn input { flex: 1; min-width: 0; }
+#learn .arrow { color: var(--ink-soft); }
 
-button {
-  font: inherit;
-  font-weight: 500;
-  color: var(--ink);
-  background: var(--sunken);
+/* O trecho ouvido não é editável: ele veio do texto, e digitar por cima
+   desfaria a única coisa que a seleção garante — que a regra casa com o que
+   o Whisper realmente escreveu. */
+.picked-phrase {
+  max-width: 220px;
+  padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 5px 11px;
-  cursor: pointer;
+  background: var(--sunken);
+  font: 12px/1.2 ui-monospace, "SF Mono", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-button:hover:not(:disabled) { border-color: var(--accent); }
-button:disabled { opacity: 0.45; cursor: default; }
 
-#learn-form button { background: var(--accent); border-color: transparent; color: #fff; }
+/* ---------- a lista ---------- */
+.head-row.list { margin-top: 18px; }
+
+.terms {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
 
 /*
-  A lista de termos, em UMA linha por entrada.
-  A spec dimensiona o dicionário em 10 a 30 entradas: empilhar campos dentro
-  da linha faria a lista inteira virar rolagem.
+  UMA linha por entrada. A spec dimensiona o dicionário em 10 a 30 entradas:
+  empilhar campos dentro da linha faria a lista inteira virar rolagem.
 */
+.terms-head,
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1fr) 26px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 0;
-  border-top: 1px solid var(--line);
+  padding: 6px 10px;
 }
-.row:last-of-type { border-bottom: 1px solid var(--line); }
+.terms-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.row + .row { border-top: 1px solid var(--line); }
+.row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.row input { border-color: transparent; background: none; padding: 3px 5px; }
+.row input:hover { border-color: var(--line); }
+.row input.term { font: 12.5px/1.3 ui-monospace, "SF Mono", monospace; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--sunken);
+  gap: 3px;
+  max-width: 100%;
+  padding: 1px 4px 1px 7px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  padding: 1px 4px 1px 8px;
-  font-size: 11.5px;
+  background: var(--sunken);
+  font-size: 11px;
   color: var(--ink-soft);
-  max-width: 100%;
 }
-.chip span { overflow: hidden; text-overflow: ellipsis; }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip button {
   border: 0;
   background: none;
-  padding: 0 3px;
-  font-size: 13px;
+  padding: 0 2px;
+  font-size: 12px;
   line-height: 1;
   color: var(--ink-soft);
 }
 .chip button:hover { color: var(--danger); }
 
-.remove { color: var(--ink-soft); }
-.remove:hover { color: var(--danger); border-color: var(--danger); }
+/* A derivada não tem × : ela vem da regra de camelCase, não da sua mão. */
+.chip.auto { border-style: dashed; background: none; }
+.chip.auto::after { content: "auto"; font-size: 9px; letter-spacing: 0.04em; opacity: 0.7; padding-right: 4px; }
 
-.muted { color: var(--ink-soft); font-size: 12px; padding: 10px 0; }
-
-#add-blank { margin-top: 10px; }
-
-/* Sem ditado na memória, a seção inteira fica fora de alcance. */
-#learn.unavailable #learn-form,
-#learn.unavailable #hint { opacity: 0.45; pointer-events: none; }
-
-/* Cabeçalho da lista, para as três colunas não virarem adivinhação. */
-.head {
+.remove {
+  width: 22px;
+  height: 22px;
+  padding: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
-  gap: 8px;
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  place-items: center;
+  border: 0;
+  background: none;
   color: var(--ink-soft);
-  padding-bottom: 4px;
+  border-radius: 5px;
 }
-.head span:last-child { visibility: hidden; }
+.remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
-/* A linha de recado: recusa e falha de gravação precisam ser DITAS. */
-#status {
-  margin: 8px 0 0;
-  min-height: 16px;
-  font-size: 12px;
-  color: var(--danger);
+.muted { color: var(--ink-soft); font-size: 11.5px; }
+.empty-list { padding: 14px 12px; color: var(--ink-soft); font-size: 12px; margin: 0; }
+
+/* ---------- o rodapé ---------- */
+footer {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+  padding: 9px 20px;
+  border-top: 1px solid var(--line);
 }
+footer #status { margin: 0; min-height: 16px; font-size: 11.5px; color: var(--ink-soft); }
+footer #status.bad { color: var(--danger); }

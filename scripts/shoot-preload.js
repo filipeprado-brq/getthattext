@@ -60,6 +60,22 @@ contextBridge.exposeInMainWorld("preferencesBridge", {
   testShortcut: pending,
 });
 
+const RAW =
+  "Coloca o endpoint barra api barra v1 barra usuários no services alf ponto ts, " +
+  "e o date format tem que sair do use menu antes de o PNE responder.";
+
+const ENTRIES = [
+  { term: "services.auth.ts", heard: ["services alf ponto ts"], context: "arquivo do projeto" },
+  { term: "useMenu", context: "hook do React" },
+  { term: "PNR", heard: ["PNE", "peneira"], context: "sigla de reserva" },
+  { term: "shadcn", heard: ["chedissiene"], context: "biblioteca de componentes" },
+];
+
+contextBridge.exposeInMainWorld("dictionaryBridge", {
+  load: async () => ({ entries: ENTRIES, heard: RAW }),
+  save: async (entries) => entries,
+});
+
 contextBridge.exposeInMainWorld("onboardingBridge", {
   load: async () => state,
   requestMicrophone: async () => ({ ...state, microphone: "granted" }),

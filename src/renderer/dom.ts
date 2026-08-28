@@ -30,6 +30,82 @@ const INFO_ICON =
   '<path d="M8 7.1v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
   '<circle cx="8" cy="4.9" r="0.85" fill="currentColor"/></svg>';
 
+const CHECK_ICON =
+  '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">' +
+  '<path d="M2.5 6.4 4.8 8.7 9.5 3.6" stroke="currentColor" stroke-width="1.8" ' +
+  'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ARROW_ICON =
+  '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">' +
+  '<path d="M6 1.8v6.4M3.4 5.8 6 8.4l2.6-2.6M2.4 10.2h7.2" stroke="currentColor" ' +
+  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/** Um arquivo em download, do jeito que a tela precisa mostrá-lo. */
+export type DownloadItem = {
+  /** O nome legível: "Modelo Completo", "Modelo do portão de fala". */
+  title: string;
+  file: string;
+  bytes: number;
+  received: number;
+};
+
+/**
+ * A lista de arquivos em download.
+ *
+ * Uma implementação para as duas janelas: a primeira abertura mostra em tela
+ * própria, as preferências mostram dentro da aba Modelo. Já nasceu duplicada
+ * uma vez, e a cópia das preferências ficou com o ícone vazio — que é
+ * exatamente o tipo de divergência que duas cópias produzem sozinhas.
+ *
+ * O portão de fala aparece aqui NOMEADO. Ele é baixado desde sempre, e
+ * ninguém nunca soube o que eram aqueles 885 kB.
+ */
+export function paintDownloads(
+  container: HTMLElement,
+  items: readonly DownloadItem[],
+  format: (bytes: number) => string,
+): void {
+  container.replaceChildren(
+    ...items.map((item) => {
+      const done = item.received >= item.bytes;
+
+      const row = document.createElement("div");
+      row.className = done ? "download done" : "download";
+
+      const icon = document.createElement("div");
+      icon.className = "download-icon";
+      icon.innerHTML = done ? CHECK_ICON : ARROW_ICON;
+
+      const head = document.createElement("div");
+      head.className = "download-head";
+      head.append(document.createTextNode(item.title));
+
+      const amount = document.createElement("span");
+      amount.textContent = done
+        ? "pronto"
+        : `${format(item.received)} de ${format(item.bytes)}`;
+      head.append(amount);
+
+      const file = document.createElement("div");
+      file.className = "download-file";
+      file.textContent = item.file;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.width = `${item.bytes > 0 ? Math.min(100, Math.round((item.received / item.bytes) * 100)) : 0}%`;
+      track.append(fill);
+
+      const body = document.createElement("div");
+      body.append(file, track);
+
+      row.append(icon, head, body);
+
+      return row;
+    }),
+  );
+}
+
 export type ChoiceOptions = {
   models: readonly TranscriptionModel[];
   chosen: string;

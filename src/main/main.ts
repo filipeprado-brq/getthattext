@@ -283,7 +283,7 @@ function openWindow(
 }
 
 const openDictionaryEditor = (): void =>
-  openWindow("editor", "Dicionário", { width: 640, height: 620 });
+  openWindow("editor", "Dicionário", { width: 660, height: 560 });
 
 const openOnboarding = (): void =>
   openWindow("onboarding", "Bem-vindo", { width: 680, height: 412, fixed: true });
