@@ -17,6 +17,7 @@
 const { app, BrowserWindow } = require("electron");
 const { writeFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { microphoneGroup } = require("./mic-glyph.js");
 
 const ASSETS = join(__dirname, "..", "assets");
 
@@ -54,21 +55,10 @@ function svgSource(glyph, tone, red) {
         .join(" ")}/>`,
     );
 
-  // O corpo do microfone: cápsula, arco e haste.
-  const microphone = (stroke, fill) => {
-    add("rect", {
-      x: 6.25, y: 2.25, width: 5.5, height: 8.5, rx: 2.75,
-      stroke, "stroke-width": 1.4, fill: fill || "none",
-    });
-    add("path", {
-      d: "M3.75 8.5v.75a5.25 5.25 0 0 0 10.5 0V8.5",
-      stroke, "stroke-width": 1.4, "stroke-linecap": "round", fill: "none",
-    });
-    add("path", {
-      d: "M9 14.5v1.75",
-      stroke, "stroke-width": 1.4, "stroke-linecap": "round", fill: "none",
-    });
-  };
+  // O corpo do microfone vem de `mic-glyph.js`: o ícone do app desenha o
+  // MESMO microfone em 1024 px, e duas cópias da cápsula divergiriam.
+  const microphone = (stroke, fill) =>
+    elements.push(microphoneGroup({ stroke, body: fill || "none" }));
 
   let defs = "";
 

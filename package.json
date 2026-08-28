@@ -15,6 +15,7 @@
     "verify:download-retry": "npm run build && electron scripts/verify-download-retry.js",
     "key:import": "electron scripts/import-groq-key.js",
     "build:icons": "electron scripts/build-tray-icons.js",
+    "build:icon": "electron scripts/build-app-icon.js",
     "verify:blip": "electron scripts/verify-blip.js",
     "shoot:windows": "npm run build && electron scripts/shoot-windows.js",
     "package": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64",
@@ -75,7 +76,8 @@
       },
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "notarize": false
+      "notarize": false,
+      "icon": "build/icon.icns"
     }
   },
   "main": "dist/main/main.js"
