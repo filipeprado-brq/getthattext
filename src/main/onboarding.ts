@@ -2,7 +2,7 @@ import { shell, systemPreferences } from "electron";
 import { hasApiKey } from "./apiKey";
 import { presentModels } from "./models";
 import { preferences } from "./preferences";
-import { MODELS } from "../shared/models";
+import { requiredModels } from "../shared/models";
 import type { OnboardingState } from "../shared/onboarding";
 
 /**
@@ -16,9 +16,12 @@ export function onboardingState(): OnboardingState {
   const microphone = systemPreferences.getMediaAccessStatus("microphone");
   const present = presentModels();
 
+  const chosenModel = preferences().model;
+
   return {
     microphone,
-    models: MODELS.map((model) => ({
+    chosenModel,
+    models: requiredModels(chosenModel).map((model) => ({
       file: model.file,
       label: model.label,
       bytes: model.bytes,

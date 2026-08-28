@@ -6,7 +6,13 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ModelProgress } from "../shared/bridge";
-import { bytesNeeded, type Model, MODELS, planDownload } from "../shared/models";
+import {
+  bytesNeeded,
+  type Model,
+  MODELS,
+  planDownload,
+  requiredModels,
+} from "../shared/models";
 
 /**
  * Os modelos no disco: onde ficam, se são íntegros, e como baixá-los.
@@ -73,7 +79,7 @@ export function isModelPresent(model: Model): boolean {
   return sizeOf(modelPath(model.file)) === model.bytes;
 }
 
-/** Quais modelos já estão no lugar. */
+/** Quais modelos do catálogo já estão no lugar. */
 export function presentModels(): string[] {
   return MODELS.filter(isModelPresent).map((model) => model.file);
 }
@@ -97,11 +103,12 @@ export function partialBytes(model: Model): number {
  * modelo dentro do laço só descobriria a falta de espaço depois de gravar
  * 574 MB — e aí o disco já estaria cheio.
  */
-export function hasRoomForAll(present: readonly string[]): boolean {
-  const missing = MODELS.filter((model) => !present.includes(model.file));
+export function hasRoomForAll(chosen: string, present: readonly string[]): boolean {
+  const needed = requiredModels(chosen);
+  const missing = needed.filter((model) => !present.includes(model.file));
   const alreadyPartial = missing.reduce((total, model) => total + partialBytes(model), 0);
 
-  return hasRoomFor(bytesNeeded(MODELS, present) - alreadyPartial);
+  return hasRoomFor(bytesNeeded(needed, present) - alreadyPartial);
 }
 
 /**

@@ -5,7 +5,7 @@ import { isValidAccelerator } from "./shortcut";
 describe("parsePreferences", () => {
   it("lê o que foi gravado", () => {
     const parsed = parsePreferences(
-      '{"sound":false,"rewrite":false,"shortcut":"Control+Command+K","language":"en","model":"ggml-base.bin"}',
+      '{"sound":false,"rewrite":false,"shortcut":"Control+Command+K","language":"en","model":"ggml-small-q5_1.bin"}',
     );
 
     expect(parsed).toMatchObject({
@@ -13,7 +13,7 @@ describe("parsePreferences", () => {
       rewrite: false,
       shortcut: "Control+Command+K",
       language: "en",
-      model: "ggml-base.bin",
+      model: "ggml-small-q5_1.bin",
     });
   });
 
@@ -33,6 +33,16 @@ describe("parsePreferences", () => {
     expect(parsed.sound).toBe(false);
     expect(parsed.language).toBe(DEFAULT_PREFERENCES.language);
     expect(parsed.model).toBe(DEFAULT_PREFERENCES.model);
+  });
+
+  it("recusa modelo que o app não sabe baixar nem verificar", () => {
+    // Qualquer string deixava passar um nome sem URL nem hash no catálogo,
+    // e a falha só apareceria na primeira ditação — com o diagnóstico
+    // errado, porque "modelo ausente" e "modelo corrompido" dão a mesma
+    // mensagem no whisper.
+    expect(parsePreferences('{"model":"ggml-inventado.bin"}').model).toBe(
+      DEFAULT_PREFERENCES.model,
+    );
   });
 
   it("ignora booleano com o tipo errado em vez de propagá-lo", () => {

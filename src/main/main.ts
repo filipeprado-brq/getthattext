@@ -43,7 +43,12 @@ import {
   requestMicrophone,
 } from "./onboarding";
 import { MISSING_BINARY_MESSAGE, recoveryFor } from "../shared/failures";
-import { bytesNeeded, formatBytes, MODELS } from "../shared/models";
+import {
+  bytesNeeded,
+  formatBytes,
+  MODELS,
+  requiredModels,
+} from "../shared/models";
 import { clearApiKey, hasApiKey, saveApiKey } from "./apiKey";
 import { rewriteOrRaw } from "./groq";
 import { preferences, updatePreferences } from "./preferences";
@@ -402,6 +407,12 @@ ipcMain.handle("onboarding-microphone", () => requestMicrophone());
 
 ipcMain.handle("onboarding-microphone-settings", () => openMicrophoneSettings());
 
+ipcMain.handle("onboarding-choose-model", (_event, file: unknown) => {
+  if (typeof file === "string") updatePreferences({ model: file });
+
+  return onboardingState();
+});
+
 /**
  * Baixa o que falta, um de cada vez.
  *
@@ -409,11 +420,14 @@ ipcMain.handle("onboarding-microphone-settings", () => openMicrophoneSettings())
  * dividir a banda faria a barra grande arrastar sem ninguém ganhar nada.
  */
 ipcMain.handle("onboarding-download", async (event) => {
+  const chosen = preferences().model;
+  const needed = requiredModels(chosen);
   const present = presentModels();
-  if (!hasRoomForAll(present)) {
+
+  if (!hasRoomForAll(chosen, present)) {
     throw new Error(
       `Não há espaço em disco para os modelos que faltam ` +
-        `(${formatBytes(bytesNeeded(MODELS, present))}).`,
+        `(${formatBytes(bytesNeeded(needed, present))}).`,
     );
   }
 
@@ -427,7 +441,8 @@ ipcMain.handle("onboarding-download", async (event) => {
   event.sender.once("destroyed", stop);
 
   try {
-    for (const model of MODELS) {
+    // Só o escolhido e o portão. Baixar o catálogo inteiro custaria 824 MB.
+    for (const model of needed) {
       if (isModelPresent(model)) continue;
 
       await downloadModel(
@@ -451,11 +466,21 @@ ipcMain.on("onboarding-finish", () => windows.onboarding?.close());
 ipcMain.handle("preferences-load", () => snapshot());
 
 ipcMain.handle("preferences-save", (_event, patch: Partial<Preferences>) => {
-  const before = preferences().shortcut;
+  const before = preferences();
   const saved = updatePreferences(patch);
+
   // O atalho só passa a valer depois de re-registrar; sem isto a tela
   // mostraria o novo e o teclado continuaria no antigo.
-  if (saved.shortcut !== before) reapplyShortcut();
+  if (saved.shortcut !== before.shortcut) reapplyShortcut();
+
+  // Trocar para um modelo que não está no disco abre o onboarding na hora.
+  // Sem isto a troca ficaria passiva: o download só aconteceria quando você
+  // tentasse ditar e o portão de prontidão reabrisse a janela, o que parece
+  // que a escolha não fez nada.
+  const chosen = requiredModels(saved.model)[0];
+  if (saved.model !== before.model && chosen && !isModelPresent(chosen)) {
+    openOnboarding();
+  }
 
   return snapshot();
 });

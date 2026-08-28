@@ -10,6 +10,7 @@ const state = (over: Partial<OnboardingState> = {}): OnboardingState => ({
   ],
   hasApiKey: true,
   shortcut: "Alt+Command+G",
+  chosenModel: "ggml-large-v3-turbo-q5_0.bin",
   ...over,
 });
 

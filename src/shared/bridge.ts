@@ -121,6 +121,8 @@ export type OnboardingBridge = {
   requestMicrophone(): Promise<OnboardingState>;
   /** Leva ao painel de privacidade — conveniência, não o único caminho. */
   openMicrophoneSettings(): Promise<void>;
+  /** Guarda o modelo escolhido antes de baixar. */
+  chooseModel(file: string): Promise<OnboardingState>;
   /** Baixa o que falta. Rejeita com mensagem utilizável. */
   downloadModels(): Promise<OnboardingState>;
   onProgress(handler: (progress: ModelProgress) => void): void;

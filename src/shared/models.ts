@@ -17,33 +17,112 @@ export type Model = {
   label: string;
 };
 
+/** Um modelo de transcrição, com o que a escolha precisa mostrar. */
+export type TranscriptionModel = Model & {
+  /** Como ele aparece na tela. */
+  name: string;
+  /**
+   * O que se perde ao escolher este.
+   *
+   * Obrigatório de propósito: oferecer "60 MB" sem dizer que ele repete
+   * trechos em loop seria oferecer uma armadilha.
+   */
+  tradeoff: string;
+  recommended?: true;
+};
+
+const HOST = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
+
 /**
- * Os dois modelos que o app precisa.
+ * Os modelos entre os quais se escolhe, do melhor para o menor.
  *
- * Tamanho e hash vieram dos headers `x-linked-size` e `x-linked-etag` do
- * próprio Hugging Face, conferidos contra os arquivos que rodaram o corpus.
- * O do `large-v3-turbo` bate com o que a spec (seção 9) registrou.
+ * A ordem é de QUALIDADE, não de tamanho: a lista é lida de cima para
+ * baixo, e o recomendado em primeiro é o que vira padrão de quem não lê.
  *
- * Ficam FIXOS aqui, e não são lidos do servidor a cada download: buscar o
- * hash da mesma origem que serve o arquivo não verificaria nada — quem
- * servisse um arquivo trocado serviria o hash dele junto.
+ * Tamanho e SHA-256 vêm da API do Hugging Face
+ * (`/api/models/ggerganov/whisper.cpp/tree/main`), conferidos contra os
+ * arquivos baixados. Ficam FIXOS aqui: buscar o hash da mesma origem que
+ * serve o arquivo não verificaria nada.
+ *
+ * Os números dos trade-offs saíram do corpus completo, 30 amostras. A
+ * medição está no #16; o que importa para a escolha é que "similaridade"
+ * engana — o `small` fica em 93,3% no agregado e perde METADE dos termos
+ * técnicos, que é o que este app existe para preservar.
  */
-export const MODELS: readonly Model[] = [
+export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
   {
     file: "ggml-large-v3-turbo-q5_0.bin",
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
+    url: `${HOST}/ggml-large-v3-turbo-q5_0.bin`,
     bytes: 574_041_195,
     sha256: "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
     label: "Modelo de transcrição",
+    name: "Completo",
+    tradeoff: "Preserva nome de arquivo, camelCase e sigla.",
+    recommended: true,
   },
   {
-    file: "ggml-silero-v5.1.2.bin",
-    url: "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
-    bytes: 885_098,
-    sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf",
-    label: "Modelo do portão de fala",
+    file: "ggml-small-q5_1.bin",
+    url: `${HOST}/ggml-small-q5_1.bin`,
+    bytes: 190_085_487,
+    sha256: "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+    label: "Modelo de transcrição",
+    name: "Compacto",
+    tradeoff:
+      "Um terço do tamanho. Erra cerca de metade das siglas e dos nomes de " +
+      'arquivo — "PNR" vira "PNE", "IDS" vira "DS".',
+  },
+  {
+    file: "ggml-base-q5_1.bin",
+    url: `${HOST}/ggml-base-q5_1.bin`,
+    bytes: 59_707_625,
+    sha256: "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898",
+    label: "Modelo de transcrição",
+    name: "Mínimo",
+    tradeoff:
+      "Dez vezes menor. Além de errar siglas, às vezes repete trechos em " +
+      "loop e produz quase o dobro de texto.",
   },
 ];
+
+/** O padrão de quem não escolhe. */
+export const RECOMMENDED_MODEL = TRANSCRIPTION_MODELS.find(
+  (model) => model.recommended,
+)!.file;
+
+/**
+ * O modelo do portão de fala. NÃO é escolha.
+ *
+ * Sem ele o Whisper alucina em gravação sem fala — medido, 8 de 8. E ele
+ * custa 885 KB, 0,15% do modelo principal: não há trade-off para oferecer.
+ */
+export const VAD_MODEL: Model = {
+  file: "ggml-silero-v5.1.2.bin",
+  url: "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
+  bytes: 885_098,
+  sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf",
+  label: "Modelo do portão de fala",
+};
+
+/** Tudo que o catálogo conhece, para verificação e download. */
+export const MODELS: readonly Model[] = [...TRANSCRIPTION_MODELS, VAD_MODEL];
+
+/**
+ * Os modelos que precisam estar no disco, dado o escolhido.
+ *
+ * Só o escolhido e o portão. Baixar os três custaria 824 MB — pior que o
+ * problema que a escolha resolve.
+ *
+ * Escolha desconhecida cai no recomendado: preferência editada à mão, ou
+ * vinda de uma versão que oferecia outro modelo, não pode virar "não baixa
+ * nada".
+ */
+export function requiredModels(chosen: string): readonly Model[] {
+  const model =
+    TRANSCRIPTION_MODELS.find(({ file }) => file === chosen) ??
+    TRANSCRIPTION_MODELS.find(({ recommended }) => recommended)!;
+
+  return [model, VAD_MODEL];
+}
 
 /** O que fazer com um arquivo que já está no disco pela metade. */
 export type DownloadPlan =

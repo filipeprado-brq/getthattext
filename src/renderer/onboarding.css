@@ -88,3 +88,50 @@ footer #status { margin: 0; font-size: 12px; color: var(--danger); flex: 1; }
 #back { color: var(--ink-soft); border-color: transparent; background: none; padding-left: 0; }
 #back:hover:not(:disabled) { color: var(--accent); }
 #back[hidden] { display: none; }
+
+/*
+  As opções de modelo. Cada uma mostra o que se PERDE, não só o tamanho:
+  oferecer "60 MB" sem dizer que ele repete trechos em loop seria oferecer
+  uma armadilha.
+*/
+#choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+.choice {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--paper);
+}
+.choice:hover { border-color: var(--accent); }
+.choice.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
+.choice input { margin: 0; accent-color: var(--accent); }
+
+.choice-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.choice-size { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.choice-tradeoff {
+  grid-column: 2 / -1;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+
+/* Baixado já: some o rádio, fica o estado. */
+.choice.here .choice-size::after { content: " · no disco"; }

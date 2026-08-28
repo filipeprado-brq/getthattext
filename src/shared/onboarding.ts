@@ -23,7 +23,10 @@ export type ModelStatus = {
 
 export type OnboardingState = {
   microphone: MicrophoneAccess;
+  /** Só os necessários para a escolha atual, não o catálogo inteiro. */
   models: readonly ModelStatus[];
+  /** O modelo de transcrição escolhido. */
+  chosenModel: string;
   /** Opcional: sem chave o app funciona em modo cru. */
   hasApiKey: boolean;
   /**

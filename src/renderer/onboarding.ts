@@ -1,6 +1,10 @@
 import type { ModelProgress } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
-import { formatBytes, progressPercent } from "../shared/models.js";
+import {
+  formatBytes,
+  progressPercent,
+  TRANSCRIPTION_MODELS,
+} from "../shared/models.js";
 import type { OnboardingState } from "../shared/onboarding.js";
 import {
   firstPending,
@@ -30,6 +34,7 @@ const micAsk = el<HTMLButtonElement>("mic-ask");
 const micSettings = el<HTMLButtonElement>("mic-settings");
 const modelsLead = el("models-lead");
 const modelsGet = el<HTMLButtonElement>("models-get");
+const choices = el("choices");
 const bars = el("bars");
 const keyInput = el<HTMLInputElement>("key");
 const shortcutLead = el("shortcut-lead");
@@ -160,6 +165,68 @@ function paintBars(): void {
   );
 }
 
+/**
+ * As opções de modelo.
+ *
+ * Cada uma mostra o que se PERDE, não só o tamanho. Os números vieram do
+ * corpus completo (30 amostras): o compacto fica em 93,3% de similaridade
+ * agregada e perde METADE dos termos técnicos — nome de arquivo, camelCase
+ * e sigla, que é o que este app existe para preservar. Oferecer só "190 MB"
+ * seria oferecer uma armadilha.
+ */
+function paintChoices(): void {
+  if (!state) return;
+
+  const present = new Set(
+    state.models.filter((model) => model.present).map((model) => model.file),
+  );
+
+  choices.replaceChildren(
+    ...TRANSCRIPTION_MODELS.map((model) => {
+      const picked = model.file === state?.chosenModel;
+
+      const option = document.createElement("label");
+      option.className = `choice${picked ? " picked" : ""}${present.has(model.file) ? " here" : ""}`;
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "model";
+      radio.checked = picked;
+      radio.addEventListener("change", () => {
+        void window.onboardingBridge
+          .chooseModel(model.file)
+          .then((updated) => {
+            state = updated;
+            paint();
+          })
+          .catch((error: unknown) => say(reason(error)));
+      });
+
+      const name = document.createElement("span");
+      name.className = "choice-name";
+      name.textContent = model.name;
+      if (model.recommended) {
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = "recomendado";
+        name.append(badge);
+      }
+
+      const size = document.createElement("span");
+      size.className = "choice-size";
+      size.textContent = formatBytes(model.bytes);
+
+      const tradeoff = document.createElement("span");
+      tradeoff.className = "choice-tradeoff";
+      tradeoff.textContent = model.tradeoff;
+
+      option.append(radio, name, size, tradeoff);
+
+      return option;
+    }),
+  );
+}
+
 /** O recado do atalho, com a combinação em destaque no meio. */
 function describeShortcut(before: string, after: string): void {
   shortcutLead.replaceChildren(
@@ -191,9 +258,14 @@ function paint(): void {
   modelsLead.textContent =
     missing.length === 0
       ? "Os modelos estão no lugar."
-      : `A transcrição roda nesta máquina, então os modelos ficam aqui. ` +
-        `Faltam ${formatBytes(missing.reduce((total, m) => total + m.bytes, 0))}.`;
+      : "A transcrição roda nesta máquina, então o modelo fica aqui. " +
+        "Escolha o que faz sentido para o que você dita.";
   modelsGet.hidden = missing.length === 0;
+  modelsGet.textContent =
+    missing.length === 0
+      ? "Baixar"
+      : `Baixar ${formatBytes(missing.reduce((total, m) => total + m.bytes, 0))}`;
+  paintChoices();
   paintBars();
 
   keyInput.placeholder = state.hasApiKey ? "•••••••• (guardada)" : "gsk_…";

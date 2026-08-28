@@ -12,6 +12,7 @@ const bridge: OnboardingBridge = {
   load: () => ipcRenderer.invoke("onboarding-load"),
   requestMicrophone: () => ipcRenderer.invoke("onboarding-microphone"),
   openMicrophoneSettings: () => ipcRenderer.invoke("onboarding-microphone-settings"),
+  chooseModel: (file: string) => ipcRenderer.invoke("onboarding-choose-model", file),
   downloadModels: () => ipcRenderer.invoke("onboarding-download"),
   onProgress: (handler) => {
     ipcRenderer.on("onboarding-progress", (_event, progress: ModelProgress) =>

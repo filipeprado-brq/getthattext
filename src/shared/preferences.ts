@@ -1,3 +1,4 @@
+import { RECOMMENDED_MODEL, TRANSCRIPTION_MODELS } from "./models.js";
 import { isValidAccelerator, SHORTCUT_ACCELERATOR } from "./shortcut.js";
 
 /**
@@ -45,7 +46,7 @@ export type Preferences = {
   shortcut: string;
   /** Código de idioma passado ao whisper, ou `auto`. */
   language: string;
-  /** Nome do arquivo do modelo, dentro da pasta de modelos. */
+  /** O modelo de transcrição escolhido, entre os do catálogo. */
   model: string;
 };
 
@@ -54,7 +55,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   rewrite: true,
   shortcut: SHORTCUT_ACCELERATOR,
   language: "pt",
-  model: "ggml-large-v3-turbo-q5_0.bin",
+  model: RECOMMENDED_MODEL,
 };
 
 /** Fica com o valor gravado só se ele for do tipo certo. */
@@ -107,10 +108,11 @@ export function parsePreferences(text: string | undefined): Preferences {
       "language",
       (value) => LANGUAGES.some((language) => language.code === value),
     ),
-    model: pick(
-      stored,
-      "model",
-      (value) => typeof value === "string" && value.length > 0,
+    // Só um do catálogo. Qualquer string deixava passar um nome que o app
+    // não sabe baixar nem verificar, e a falha só apareceria na primeira
+    // ditação, com o diagnóstico errado.
+    model: pick(stored, "model", (value) =>
+      TRANSCRIPTION_MODELS.some(({ file }) => file === value),
     ),
   };
 }

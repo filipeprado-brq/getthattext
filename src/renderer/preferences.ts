@@ -1,6 +1,7 @@
 import type { PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
 import { el } from "./dom.js";
+import { formatBytes, TRANSCRIPTION_MODELS } from "../shared/models.js";
 import { LANGUAGES } from "../shared/preferences.js";
 import { acceleratorFromChord, acceleratorToSymbols } from "../shared/shortcut.js";
 
@@ -9,7 +10,7 @@ const recordButton = el<HTMLButtonElement>("record");
 const shortcutNote = el("shortcut-note");
 const testButton = el<HTMLButtonElement>("test");
 const languageSelect = el<HTMLSelectElement>("language");
-const modelSelect = el<HTMLSelectElement>("model");
+const choices = el("choices");
 const modelNote = el("model-note");
 const rewriteBox = el<HTMLInputElement>("rewrite");
 const soundBox = el<HTMLInputElement>("sound");
@@ -52,16 +53,13 @@ function render(snapshot: PreferencesSnapshot): void {
     ...LANGUAGES.map(({ code, label }) => new Option(label, code, false, code === preferences.language)),
   );
 
-  modelSelect.replaceChildren(
-    ...(models.length > 0 ? models : [preferences.model]).map((name) =>
-      new Option(name, name, false, name === preferences.model),
-    ),
-  );
+  paintChoices(preferences.model, models);
   note(
     modelNote,
     models.includes(preferences.model)
       ? ""
-      : `O modelo "${preferences.model}" não está na pasta de modelos — a transcrição vai falhar.`,
+      : "O modelo escolhido ainda não está no disco — a janela de download abre "
+        + "ao escolher.",
     models.includes(preferences.model) ? "" : "warn",
   );
 
@@ -89,6 +87,54 @@ function render(snapshot: PreferencesSnapshot): void {
  * `register` aceita qualquer coisa — medido. Dizer só depois de um teste que
  * falhou seria tarde e fala da direção oposta.
  */
+/**
+ * As opções de modelo, iguais às do onboarding.
+ *
+ * Mostra o que se PERDE, não só o tamanho: os números vieram do corpus
+ * completo, e "similaridade" engana — o compacto fica em 93,3% no agregado
+ * e perde metade dos termos técnicos.
+ */
+function paintChoices(chosen: string, present: readonly string[]): void {
+  choices.replaceChildren(
+    ...TRANSCRIPTION_MODELS.map((model) => {
+      const picked = model.file === chosen;
+
+      const option = document.createElement("label");
+      option.className = `choice${picked ? " picked" : ""}${
+        present.includes(model.file) ? "" : " absent"
+      }`;
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "model";
+      radio.checked = picked;
+      radio.addEventListener("change", () => void save({ model: model.file }));
+
+      const name = document.createElement("span");
+      name.className = "choice-name";
+      name.textContent = model.name;
+      if (model.recommended) {
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = "recomendado";
+        name.append(badge);
+      }
+
+      const size = document.createElement("span");
+      size.className = "choice-size";
+      size.textContent = formatBytes(model.bytes);
+
+      const tradeoff = document.createElement("span");
+      tradeoff.className = "choice-tradeoff";
+      tradeoff.textContent = model.tradeoff;
+
+      option.append(radio, name, size, tradeoff);
+
+      return option;
+    }),
+  );
+}
+
 function showShortcutNote(accelerator: string): void {
   note(
     shortcutNote,
@@ -236,7 +282,6 @@ testButton.addEventListener("click", () => {
 });
 
 languageSelect.addEventListener("change", () => void save({ language: languageSelect.value }));
-modelSelect.addEventListener("change", () => void save({ model: modelSelect.value }));
 rewriteBox.addEventListener("change", () => void save({ rewrite: rewriteBox.checked }));
 soundBox.addEventListener("change", () => void save({ sound: soundBox.checked }));
 
