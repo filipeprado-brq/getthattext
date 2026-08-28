@@ -31,5 +31,6 @@
   },
   "dependencies": {
     "groq-sdk": "^1.6.0"
-  }
+  },
+  "productName": "getthattext"
 }

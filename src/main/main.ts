@@ -33,6 +33,22 @@ import { preferences, updatePreferences } from "./preferences";
 import { availableModels, hasSpeech, transcribe } from "./whisper";
 
 /**
+ * O nome do app, fixado ANTES de qualquer coisa tocar o `userData`.
+ *
+ * `productName` no `package.json` não basta: o Electron lê o package.json do
+ * diretório do app, e rodando `electron dist/main/main.js` esse diretório é
+ * `dist/main/`, que não tem um. Sem isto o `userData` fica em
+ * "Application Support/Electron" em desenvolvimento e no nome de verdade
+ * quando empacotado — dois lugares diferentes para os mesmos dados.
+ *
+ * A spec (seção 11) é dura sobre isto: o nome batiza o `userData` E o item
+ * do Keychain ("<appName> Safe Storage"). Mudá-lo órfã todos os segredos, o
+ * dicionário, as preferências e os 547 MB de modelo. Por isso fica aqui, no
+ * topo, e não muda mais.
+ */
+app.setName("getthattext");
+
+/**
  * As janelas do app, agrupadas porque só fazem sentido juntas.
  *
  * `hidden` existe só porque `getUserMedia` é API web e não há equivalente no
