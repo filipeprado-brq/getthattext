@@ -12,7 +12,7 @@
     "build": "npm run build:main && npm run build:renderer && npm run copy:assets",
     "copy:assets": "cp src/renderer/*.html src/renderer/*.css src/renderer/pcm-worklet.js dist/renderer/",
     "start": "npm run build && electron dist/main/main.js",
-    "verify:speech-gate": "node scripts/verify-speech-gate.mjs",
+    "verify:speech-gate": "electron scripts/verify-speech-gate.js",
     "verify:rewrite": "node scripts/verify-rewrite.mjs",
     "key:import": "electron scripts/import-groq-key.js",
     "build:icons": "electron scripts/build-tray-icons.js",
@@ -39,7 +39,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "O getthattext usa o microfone para transcrever o que voc\u00ea dita. O \u00e1udio \u00e9 processado na sua m\u00e1quina e n\u00e3o \u00e9 enviado a lugar nenhum.",
+        "NSMicrophoneUsageDescription": "O getthattext usa o microfone para transcrever o que você dita. O áudio é processado na sua máquina e não é enviado a lugar nenhum.",
         "LSUIElement": true
       },
       "entitlements": "build/entitlements.mac.plist",
