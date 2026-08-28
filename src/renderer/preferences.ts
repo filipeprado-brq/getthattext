@@ -1,20 +1,8 @@
 import type { PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
+import { el } from "./dom.js";
 import { LANGUAGES } from "../shared/preferences.js";
 import { acceleratorFromChord, acceleratorToSymbols } from "../shared/shortcut.js";
-
-/**
- * A tela de preferências.
- *
- * Como o editor de dicionário, grava a cada mudança e redesenha com o que
- * voltou — não há estado "não salvo".
- */
-function el<T extends HTMLElement>(id: string): T {
-  const node = document.getElementById(id);
-  if (!node) throw new Error(`elemento ausente nas preferências: ${id}`);
-
-  return node as T;
-}
 
 const shortcutOutput = el("shortcut");
 const recordButton = el<HTMLButtonElement>("record");

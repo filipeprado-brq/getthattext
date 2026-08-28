@@ -1,5 +1,6 @@
 import type { Entry } from "../shared/dictionary.js";
 import { reason } from "../shared/errors.js";
+import { el } from "./dom.js";
 import {
   heardRejection,
   phraseFrom,
@@ -47,13 +48,6 @@ let source: Source | undefined;
  * mentira deixaria "novo termo" virando regra de substituição de verdade.
  */
 let draft = false;
-
-function el<T extends HTMLElement>(id: string): T {
-  const node = document.getElementById(id);
-  if (!node) throw new Error(`elemento ausente no editor: ${id}`);
-
-  return node as T;
-}
 
 const learn = el("learn");
 const heardText = el("heard-text");

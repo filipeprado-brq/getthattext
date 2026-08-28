@@ -1,4 +1,5 @@
 import type { Entry } from "./dictionary.js";
+import type { OnboardingState } from "./onboarding.js";
 import type { Preferences } from "./preferences.js";
 
 /**
@@ -102,5 +103,38 @@ export type PreferencesBridge = {
 declare global {
   interface Window {
     preferencesBridge: PreferencesBridge;
+  }
+}
+
+/** O andamento de um download, empurrado do main para a tela. */
+export type ModelProgress = { file: string; received: number; total: number };
+
+export type OnboardingBridge = {
+  load(): Promise<OnboardingState>;
+  /** Abre o prompt do sistema, se ele ainda não foi mostrado. */
+  requestMicrophone(): Promise<OnboardingState>;
+  /** Leva ao painel de privacidade — conveniência, não o único caminho. */
+  openMicrophoneSettings(): Promise<void>;
+  /** Baixa o que falta. Rejeita com mensagem utilizável. */
+  downloadModels(): Promise<OnboardingState>;
+  onProgress(handler: (progress: ModelProgress) => void): void;
+  /** Guarda a chave, ou apaga se vier vazia. */
+  setApiKey(key: string): Promise<boolean>;
+  /**
+   * Espera você apertar o atalho.
+   *
+   * É a mesma máquina das preferências, e existe pelo mesmo motivo: o #5
+   * mediu que `globalShortcut.register` devolve `true` para tudo, então a
+   * única prova de que a tecla chega é você apertá-la. O onboarding é o
+   * único momento em que você está atento e com as mãos no teclado.
+   */
+  testShortcut(): Promise<ShortcutTest>;
+  /** Fecha o onboarding e libera o uso. */
+  finish(): void;
+};
+
+declare global {
+  interface Window {
+    onboardingBridge: OnboardingBridge;
   }
 }

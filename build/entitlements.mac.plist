@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Só o que o app usa. O `default.darwin.plist` do @electron/osx-sign concede
+  câmera, bluetooth, USB, localização e fotos — tudo isso sai, e a spec
+  (seção 11) é explícita sobre isso.
+
+  `device.audio-input` e o NSMicrophoneUsageDescription do Info.plist são
+  obrigatórios juntos: a falta de QUALQUER um causa crash, não prompt.
+
+  `allow-jit` é exigido pelo V8.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+  </dict>
+</plist>

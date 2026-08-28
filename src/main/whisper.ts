@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { MODELS } from "../shared/models";
+import { modelPath, modelsDir } from "./models";
 import { preferences } from "./preferences";
 import { buildVadArgs, countSpeechSegments } from "../shared/speechGate";
 import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
@@ -15,15 +16,18 @@ import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
 export const WHISPER_BIN = "/opt/homebrew/bin/whisper-cli";
 export const VAD_BIN = "/opt/homebrew/bin/whisper-vad-speech-segments";
 
-/** Onde os modelos moram. O #10 baixa para cá, o #12 empacota. */
-export const MODELS_DIR = `${process.env["HOME"]}/.cache/whisper`;
-
-export const VAD_MODEL_PATH = join(MODELS_DIR, "ggml-silero-v5.1.2.bin");
+/**
+ * O modelo do portão, vindo do catálogo.
+ *
+ * Não é escolha do usuário, e não é literal repetido: escrever o nome aqui
+ * e em `shared/models.ts` faria trocar o modelo exigir duas edições.
+ */
+const VAD_MODEL_FILE = MODELS[1]!.file;
 
 /** Os modelos de transcrição presentes, para a tela de preferências listar. */
 export function availableModels(): string[] {
   try {
-    return readdirSync(MODELS_DIR)
+    return readdirSync(modelsDir())
       .filter((name) => name.endsWith(".bin") && !name.includes("silero"))
       .sort();
   } catch {
@@ -81,7 +85,7 @@ function runWithWavOnStdin(
 export async function hasSpeech(wav: Buffer): Promise<boolean> {
   const stdout = await runWithWavOnStdin(
     VAD_BIN,
-    buildVadArgs(VAD_MODEL_PATH),
+    buildVadArgs(modelPath(VAD_MODEL_FILE)),
     wav,
   );
 
@@ -98,7 +102,7 @@ export async function transcribe(wav: Buffer): Promise<string> {
   const { model, language } = preferences();
   const stdout = await runWithWavOnStdin(
     WHISPER_BIN,
-    buildWhisperArgs(join(MODELS_DIR, model), language),
+    buildWhisperArgs(modelPath(model), language),
     wav,
   );
 

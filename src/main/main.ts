@@ -27,6 +27,19 @@ import {
 } from "./shortcut";
 import { dictionary, saveDictionary } from "./dictionary";
 import { loginItem, setLoginItem } from "./loginItem";
+import {
+  downloadModel,
+  hasRoomForAll,
+  isModelPresent,
+  presentModels,
+} from "./models";
+import {
+  isReady,
+  onboardingState,
+  openMicrophoneSettings,
+  requestMicrophone,
+} from "./onboarding";
+import { bytesNeeded, formatBytes, MODELS } from "../shared/models";
 import { clearApiKey, hasApiKey, saveApiKey } from "./apiKey";
 import { rewriteOrRaw } from "./groq";
 import { preferences, updatePreferences } from "./preferences";
@@ -59,6 +72,7 @@ const windows: {
   hidden?: BrowserWindow;
   editor?: BrowserWindow;
   preferences?: BrowserWindow;
+  onboarding?: BrowserWindow;
 } = {};
 
 let tray: Tray | undefined;
@@ -146,6 +160,15 @@ function send(command: Command): void {
 function toggle(): void {
   const { click } = PRESENTATION[state];
 
+  // Barra só o INÍCIO. Barrar o "parar" deixaria o microfone aberto e o
+  // ponto laranja aceso se um modelo sumisse no meio da gravação — o
+  // oposto do que o portão existe para fazer.
+  if (click === "start" && !isReady(onboardingState())) {
+    openOnboarding();
+
+    return;
+  }
+
   if (click === "start") {
     setState("opening");
     send("start");
@@ -165,6 +188,16 @@ function createHiddenWindow(): void {
       nodeIntegration: false,
     },
   });
+  // Os DOIS handlers, como a spec (seção 8) exige. Sem o de checagem, o
+  // Chromium recusa `getUserMedia` sem nunca chegar ao prompt do sistema.
+  const { session } = windows.hidden.webContents;
+  session.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(permission === "media");
+  });
+  session.setPermissionCheckHandler((_contents, permission, _origin, details) => {
+    return permission === "media" && details.mediaType === "audio";
+  });
+
   void windows.hidden.loadFile(join(__dirname, "../renderer/index.html"));
 }
 
@@ -179,7 +212,7 @@ function createHiddenWindow(): void {
  * quem acabou de escolher um item de menu parece que nada aconteceu.
  */
 function openWindow(
-  key: "editor" | "preferences",
+  key: "editor" | "preferences" | "onboarding",
   title: string,
   size: { width: number; height: number },
   onClosed?: () => void,
@@ -221,6 +254,9 @@ function openWindow(
 
 const openDictionaryEditor = (): void =>
   openWindow("editor", "Dicionário", { width: 640, height: 620 });
+
+const openOnboarding = (): void =>
+  openWindow("onboarding", "Bem-vindo", { width: 560, height: 640 });
 
 const openPreferences = (): void =>
   // Um teste de atalho armado não pode sobreviver à janela que o pediu: ele
@@ -342,6 +378,58 @@ function snapshot(): PreferencesSnapshot {
   };
 }
 
+ipcMain.handle("onboarding-load", () => onboardingState());
+
+ipcMain.handle("onboarding-microphone", () => requestMicrophone());
+
+ipcMain.handle("onboarding-microphone-settings", () => openMicrophoneSettings());
+
+/**
+ * Baixa o que falta, um de cada vez.
+ *
+ * Em série e não em paralelo: são 574 MB e 885 KB pela mesma conexão, e
+ * dividir a banda faria a barra grande arrastar sem ninguém ganhar nada.
+ */
+ipcMain.handle("onboarding-download", async (event) => {
+  const present = presentModels();
+  if (!hasRoomForAll(present)) {
+    throw new Error(
+      `Não há espaço em disco para os modelos que faltam ` +
+        `(${formatBytes(bytesNeeded(MODELS, present))}).`,
+    );
+  }
+
+  // O download morre com a janela que o pediu. Sem isto ele continuaria
+  // mandando progresso para um renderer destruído — e `send` num
+  // `webContents` destruído LANÇA, dentro de um listener de stream que não
+  // está na cadeia da pipeline: exceção não capturada no main. O `.part`
+  // fica no disco, então reabrir retoma de onde parou.
+  const cancel = new AbortController();
+  const stop = (): void => cancel.abort();
+  event.sender.once("destroyed", stop);
+
+  try {
+    for (const model of MODELS) {
+      if (isModelPresent(model)) continue;
+
+      await downloadModel(
+        model,
+        ({ received, total }) => {
+          if (event.sender.isDestroyed()) return;
+          event.sender.send("onboarding-progress", { file: model.file, received, total });
+        },
+        cancel.signal,
+      );
+    }
+  } finally {
+    event.sender.off("destroyed", stop);
+  }
+
+  return onboardingState();
+});
+
+ipcMain.on("onboarding-finish", () => windows.onboarding?.close());
+
 ipcMain.handle("preferences-load", () => snapshot());
 
 ipcMain.handle("preferences-save", (_event, patch: Partial<Preferences>) => {
@@ -446,6 +534,11 @@ void app.whenReady().then(() => {
   keepShortcutRegistered(toggle);
   createTray();
   warnIfShortcutMissing();
+
+  // A primeira abertura mostra o onboarding sozinha. Também volta se um
+  // modelo for apagado ou a permissão revogada: o estado é derivado, não
+  // um sinalizador de "já fiz isso".
+  if (!isReady(onboardingState())) openOnboarding();
 });
 
 app.on("will-quit", () => {

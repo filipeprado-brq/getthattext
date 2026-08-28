@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>Bem-vindo</title>
+    <link rel="stylesheet" href="./editor.css" />
+    <link rel="stylesheet" href="./onboarding.css" />
+  </head>
+  <body>
+    <header>
+      <h1>getthattext</h1>
+      <p>Fale, e o texto aparece na sua área de transferência.</p>
+    </header>
+
+    <ol id="steps">
+      <li id="step-mic" class="step">
+        <div class="marker"></div>
+        <div class="body">
+          <h2>Microfone</h2>
+          <p class="what" id="mic-what">O app precisa da sua permissão para ouvir.</p>
+          <div class="actions">
+            <button id="mic-ask" type="button">Permitir…</button>
+            <button id="mic-settings" type="button" class="quiet">Abrir Ajustes do Sistema</button>
+          </div>
+          <p class="path" id="mic-path"></p>
+        </div>
+      </li>
+
+      <li id="step-models" class="step">
+        <div class="marker"></div>
+        <div class="body">
+          <h2>Modelos</h2>
+          <p class="what" id="models-what"></p>
+          <div id="bars"></div>
+          <div class="actions"><button id="models-get" type="button">Baixar</button></div>
+        </div>
+      </li>
+
+      <li id="step-key" class="step">
+        <div class="marker"></div>
+        <div class="body">
+          <h2>Chave do Groq <span class="optional">opcional</span></h2>
+          <p class="what">
+            Ela melhora o texto: tira hesitação, põe pontuação. Sem ela o app
+            funciona, entregando a transcrição crua.
+          </p>
+          <div class="actions">
+            <input id="key" type="password" autocomplete="off" placeholder="gsk_…" />
+            <button id="key-save" type="button">Guardar</button>
+          </div>
+        </div>
+      </li>
+
+      <li id="step-shortcut" class="step">
+        <div class="marker"></div>
+        <div class="body">
+          <h2>O atalho</h2>
+          <p class="what" id="shortcut-what"></p>
+          <div class="actions">
+            <button id="shortcut-test" type="button">Testar agora</button>
+          </div>
+          <p class="path">
+            Também dá para clicar no ícone da barra de menu. O atalho é
+            trocável em Preferências.
+          </p>
+        </div>
+      </li>
+    </ol>
+
+    <footer>
+      <p id="status" role="status"></p>
+      <button id="finish" type="button" disabled>Começar a usar</button>
+    </footer>
+
+    <script type="module" src="./onboarding.js"></script>
+  </body>
+</html>
