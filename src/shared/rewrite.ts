@@ -17,6 +17,16 @@
  * O limiar de 40 palavras foi medido, não estimado: pedindo brevidade
  * explícita, a fala natural saiu com 9, 14, 19, 27, 33, 35 e 37 palavras,
  * e o limiar anterior de 15 quase nunca dispararia.
+ *
+ * DIVERGÊNCIA DA SPEC, medida em ditado real: a linha sobre saudações e
+ * despedidas não está na seção 5. Sem ela, o caminho agressivo (>= 40
+ * palavras) come o cumprimento — "E aí pessoal, tudo bem?" sumiu em 11 de
+ * 13 rodadas sobre a mesma entrada. Com ela, 13 de 13 mantiveram.
+ *
+ * O bloco NUNCA MUDE era sobre ALTERAR, e não havia nada sobre REMOVER;
+ * a única remoção autorizada em MUDE é disfluência, e saudação não é
+ * disfluência. A trava fica aqui e não em MUDE porque um "NUNCA REMOVA"
+ * genérico brigaria com a remoção de disfluência, que é desejada.
  */
 export const SYSTEM_PROMPT = `Você reescreve transcrições de ditado em português do Brasil.
 
@@ -46,6 +56,7 @@ NUNCA MUDE:
 - siglas
 - termos técnicos em inglês — mantenha em inglês
 - o grau de certeza: se a pessoa disse "acho que", não afirme
+- saudações e despedidas: se a pessoa cumprimentou ou se despediu, mantenha
 
 NUNCA ACRESCENTE:
 - informação que não está no texto

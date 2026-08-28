@@ -48,6 +48,19 @@ const CASES = [
     must: [/pull request/i, /code review/i],
   },
   {
+    // Conteúdo neutro de propósito: o corpus real é privado e não entra no
+    // repo. O que importa aqui é o tamanho — passa de 40 palavras e cai no
+    // caminho agressivo, que é onde a saudação sumia.
+    name: "mantém saudação e despedida no caminho agressivo (>= 40 palavras)",
+    input:
+      "oi pessoal bom dia, então hoje eu queria falar rapidinho sobre a lista " +
+      "de compras da semana que a gente combinou, eu acho que dá pra reduzir o " +
+      "gasto se comprar as coisas na feira em vez do mercado, principalmente " +
+      "fruta e verdura que sai bem mais barato, aí depois me confirma se faz " +
+      "sentido, valeu pessoal até mais",
+    must: [/bom dia|oi pessoal/i, /valeu|at[ée] mais/i],
+  },
+  {
     name: "preserva número e prazo",
     input: "são 3 tickets pra entregar até sexta feira dia 12",
     must: ["3", "12"],

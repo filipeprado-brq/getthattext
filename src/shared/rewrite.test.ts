@@ -23,6 +23,12 @@ describe("SYSTEM_PROMPT", () => {
     }
   });
 
+  it("manda manter saudação e despedida", () => {
+    // Sem esta linha o caminho agressivo come o cumprimento: "E aí pessoal,
+    // tudo bem?" sumiu em 11 de 13 rodadas sobre a mesma entrada real.
+    expect(SYSTEM_PROMPT).toContain("saudações e despedidas");
+  });
+
   it("proíbe acrescentar o que não foi dito", () => {
     expect(SYSTEM_PROMPT).toContain("NUNCA ACRESCENTE");
     expect(SYSTEM_PROMPT).toContain("informação que não está no texto");
