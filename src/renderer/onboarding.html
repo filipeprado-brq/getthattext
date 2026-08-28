@@ -10,69 +10,130 @@
   </head>
   <body>
     <!--
-      Wizard: um passo por vez. Quatro passos simultâneos fazem a pessoa
-      decidir por onde começar antes de conseguir começar — e a §9 diz
-      "primeira abertura, EM ORDEM".
+      Wizard linear: um passo por tela, todas do MESMO tamanho. Altura fixa
+      não é estética — é o que impede a janela de crescer e encolher a cada
+      passo, e o rodapé de mudar de linha debaixo do cursor.
+
+      A régua no topo diz onde você está e não oferece desvio: os passos são
+      quatro e todos obrigatórios, então clicar neles só serviria para pular
+      o que não pode ser pulado.
     -->
-    <nav id="dots" aria-label="progresso"></nav>
+    <header>
+      <nav id="progress" role="img" aria-label="progresso"></nav>
+    </header>
 
     <main>
-      <h1 id="title"></h1>
+      <section id="pane-microphone" class="pane">
+        <h1>Deixe o app ouvir você</h1>
+        <p class="lead">
+          A transcrição roda nesta máquina e o áudio não sai daqui. O microfone
+          é usado só enquanto você estiver gravando.
+        </p>
 
-      <section id="panel-microphone" class="panel">
-        <p class="lead" id="mic-lead"></p>
-        <div class="actions">
+        <div class="banner" id="mic-banner">
+          <div class="banner-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="6" y="2" width="4" height="7.2" rx="2" stroke="currentColor" stroke-width="1.3" />
+              <path d="M3.8 7.2a4.2 4.2 0 0 0 8.4 0M8 11.4V14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div>
+            <div class="banner-title" id="mic-title"></div>
+            <div class="banner-sub" id="mic-sub"></div>
+          </div>
+        </div>
+
+        <div class="controls">
           <button id="mic-ask" type="button" class="primary">Permitir…</button>
-          <button id="mic-settings" type="button">Abrir Ajustes do Sistema</button>
+          <button
+            id="mic-settings"
+            type="button"
+            class="icon-button"
+            aria-label="Abrir Ajustes do Sistema"
+            title="Abrir Ajustes do Sistema"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3" />
+              <path
+                d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5l-1.3 1.3M4.8 11.2l-1.3 1.3M12.5 12.5l-1.3-1.3M4.8 4.8 3.5 3.5"
+                stroke="currentColor"
+                stroke-width="1.3"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
         </div>
         <p class="aside" id="mic-path"></p>
       </section>
 
-      <section id="panel-models" class="panel">
-        <p class="lead" id="models-lead"></p>
-        <div id="choices" role="radiogroup" aria-label="modelo de transcrição"></div>
-        <div id="bars"></div>
-        <div class="actions">
-          <button id="models-get" type="button" class="primary">Baixar</button>
-        </div>
-      </section>
-
-      <section id="panel-key" class="panel">
+      <section id="pane-models" class="pane">
+        <h1>Escolha o modelo</h1>
         <p class="lead">
-          A chave do Groq melhora o texto: tira hesitação, põe pontuação,
-          organiza parágrafos. Sem ela o app funciona e entrega a transcrição
-          crua.
+          Ele fica nesta máquina e faz a transcrição. Quanto menor, mais ele
+          erra sigla, caminho e nome de arquivo.
         </p>
-        <div class="actions">
-          <input id="key" type="password" autocomplete="off" placeholder="gsk_…" />
-          <button id="key-save" type="button" class="primary">Guardar</button>
-          <button id="key-skip" type="button">Agora não</button>
-        </div>
-        <p class="aside">Ela fica cifrada no Keychain e nunca sai desta máquina.</p>
+        <div id="choices" class="choices" role="radiogroup" aria-label="modelo de transcrição"></div>
       </section>
 
-      <section id="panel-shortcut" class="panel">
-        <p class="lead" id="shortcut-lead"></p>
-        <div class="actions">
-          <button id="shortcut-test" type="button" class="primary">Testar agora</button>
-        </div>
-        <p class="aside">
-          O clique no ícone da barra de menu faz o mesmo, e o atalho é
-          trocável em Preferências.
+      <section id="pane-download" class="pane">
+        <h1>Baixando</h1>
+        <p class="lead">
+          Deixe a janela aberta. Se fechar, o que já veio fica no disco e o
+          download recomeça de onde parou.
+        </p>
+        <div id="bars" class="downloads"></div>
+        <p class="gate-note">
+          O <b>portão de fala</b> vem junto e não é opcional: é ele que decide
+          se houve voz na gravação. Sem ele o Whisper inventa texto no silêncio
+          — medido, 8 vezes em 8.
         </p>
       </section>
 
-      <section id="panel-done" class="panel">
-        <p class="lead">Tudo pronto. Fale, e o texto aparece na sua área de transferência.</p>
-        <div class="actions">
-          <button id="finish" type="button" class="primary">Começar a usar</button>
+      <section id="pane-key" class="pane">
+        <h1>Ligue a reescrita</h1>
+        <p class="lead">
+          A reescrita tira hesitação, põe pontuação e organiza parágrafos.
+          Escolha o provedor e cole a chave dele.
+        </p>
+
+        <div class="form-grid">
+          <label for="provider">Provedor</label>
+          <div class="controls"><select id="provider" class="grow"></select></div>
+
+          <label for="key">Chave</label>
+          <div class="controls">
+            <input id="key" type="password" autocomplete="off" spellcheck="false" class="grow" />
+            <button id="key-check" type="button">Testar conexão</button>
+            <button id="key-save" type="button" class="primary">Ativar</button>
+          </div>
+
+          <span aria-hidden="true"></span>
+          <p class="key-state" id="key-state"></p>
         </div>
+
+        <p class="aside" id="key-aside"></p>
+      </section>
+
+      <section id="pane-shortcut" class="pane">
+        <h1>O atalho</h1>
+        <p class="lead">
+          Aperte para começar a gravar, aperte de novo para parar. O clique no
+          ícone da barra de menu faz o mesmo.
+        </p>
+
+        <div class="controls">
+          <output id="chord" class="chord"></output>
+          <button id="shortcut-change" type="button">Trocar</button>
+          <button id="shortcut-test" type="button">Testar</button>
+        </div>
+        <p class="aside" id="shortcut-note"></p>
       </section>
     </main>
 
     <footer>
-      <button id="back" type="button">Voltar</button>
+      <button id="back" type="button" class="quiet">Voltar</button>
       <p id="status" role="status"></p>
+      <button id="next" type="button" class="primary">Continuar</button>
     </footer>
 
     <script type="module" src="./onboarding.js"></script>

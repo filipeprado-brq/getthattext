@@ -10,7 +10,12 @@
   --ink-soft: #6b6b70;
   --line: #dcdcde;
   --accent: #0a84ff;
+  /* O aviso que não é erro: falta baixar, potência intermediária. */
+  --warn: #b3730f;
   --danger: #d7373f;
+  /* A explicação flutuante inverte o fundo, como a do sistema. */
+  --tip: #26262a;
+  --tip-ink: #f4f4f6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,7 +26,10 @@
     --ink-soft: #9a9aa0;
     --line: #3a3a3e;
     --accent: #4aa3ff;
+    --warn: #e0a63f;
     --danger: #ff6b6b;
+    --tip: #3a3a3f;
+    --tip-ink: #f4f4f6;
   }
 }
 

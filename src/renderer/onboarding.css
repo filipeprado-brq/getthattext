@@ -1,91 +1,226 @@
-/* Wizard: um passo por vez, com o progresso no topo. */
+/*
+  Wizard linear. A régua no topo, o passo no meio, a navegação no rodapé —
+  e o meio com ALTURA FIXA, para as cinco telas ocuparem a mesma caixa.
+*/
 body {
-  padding: 22px 30px 18px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-/* Os pontos de progresso. Concluídos ficam cheios, o atual alongado. */
-#dots { display: flex; gap: 6px; margin-bottom: 26px; }
-.dot {
-  height: 4px;
-  width: 22px;
+header { padding: 14px 32px 0; display: flex; }
+
+/* Concluídos ficam cheios, o atual alongado. Sem números: são quatro. */
+#progress { display: flex; gap: 5px; margin-left: auto; }
+#progress i {
+  display: block;
+  height: 3px;
+  width: 20px;
   border-radius: 2px;
   background: var(--line);
   transition: width 0.2s ease-out, background 0.2s ease-out;
 }
-.dot.done { background: var(--ink-soft); }
-.dot.current { background: var(--accent); width: 40px; }
+#progress i.done { background: var(--ink-soft); }
+#progress i.current { background: var(--accent); width: 30px; }
 
-main { flex: 1; }
+main { padding: 22px 32px 0; }
+/* O `editor.css` separa seções irmãs com 26px. Aqui elas são as telas do
+   wizard, empilhadas no mesmo lugar: a margem mudaria a altura conforme o
+   passo, que é exatamente o que a altura fixa existe para impedir. */
+main section + section { margin-top: 0; }
+
+/*
+  A altura é fixa e igual para todos os passos. Sem isto a janela crescia no
+  passo dos modelos e encolhia no da chave, e o rodapé mudava de linha
+  debaixo do cursor.
+*/
+.pane { display: none; height: 286px; }
+.pane.active { display: block; }
 
 h1 {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   text-transform: none;
   color: var(--ink);
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
-
-.panel { display: none; }
-.panel.active { display: block; }
 
 .lead {
-  margin: 0 0 16px;
-  color: var(--ink-2, var(--ink-soft));
-  font-size: 13.5px;
-  line-height: 1.6;
-  max-width: 46ch;
+  margin: 0 0 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 52ch;
 }
-.panel.blocked .lead { color: var(--danger); }
 
 .aside {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   font-size: 11.5px;
   color: var(--ink-soft);
   line-height: 1.5;
-  max-width: 48ch;
+  max-width: 50ch;
 }
 .aside:empty { display: none; }
 
-.actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.actions input { flex: 1; min-width: 170px; }
-button.primary { background: var(--accent); border-color: transparent; color: #fff; padding: 6px 14px; }
+/*
+  `controls`, não `row`: o `editor.css` — que as três janelas carregam — já
+  usa `.row` para a linha da lista do dicionário, com borda em cima e
+  embaixo. Duas classes de mesmo nome em folhas irmãs desenham traços que
+  ninguém pediu.
+*/
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+
+button.primary { background: var(--accent); border-color: transparent; color: #fff; padding: 5px 15px; }
 button.primary:disabled { background: var(--sunken); color: var(--ink-soft); border-color: var(--line); }
+button.quiet { background: none; border-color: transparent; color: var(--ink-soft); padding-left: 2px; }
+button.quiet:hover:not(:disabled) { color: var(--accent); }
 
-/* Uma barra por modelo. */
-#bars { margin-bottom: 16px; }
-#bars:empty { display: none; }
-.bar { margin-bottom: 9px; }
-.bar-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 4px; }
-.bar-track { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+/* O botão só de ícone: os Ajustes do Sistema, que são a saída, não o caminho. */
+.icon-button {
+  width: 28px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+.icon-button:hover:not(:disabled) { color: var(--accent); }
+
+/* ---------- o banner de permissão ---------- */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--sunken);
+  margin-bottom: 16px;
+}
+.banner.ok { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+.banner.blocked { border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.banner-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+.banner.ok .banner-icon { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.banner.blocked .banner-icon { color: var(--danger); }
+.banner-title { font-size: 12.5px; font-weight: 600; }
+.banner-sub { font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; max-width: 46ch; }
+
+/* ---------- a tela de download ---------- */
+.downloads { display: flex; flex-direction: column; gap: 14px; }
+.download {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 3px 11px;
+}
+.download-icon {
+  grid-row: 1 / 3;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--sunken);
+  color: var(--ink-soft);
+}
+.download.done .download-icon {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.download-head { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+.download-head span {
+  margin-left: auto;
+  font: 11px/1.4 ui-monospace, "SF Mono", monospace;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.download-file { font: 10.5px/1.4 ui-monospace, "SF Mono", monospace; color: var(--ink-soft); }
+
+.bar-track { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; margin-top: 6px; }
 .bar-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.15s linear; }
-.bar.done .bar-fill { background: var(--ink-soft); }
 
+.gate-note {
+  margin: 16px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 54ch;
+}
+
+/* ---------- o passo da chave ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+}
+.form-grid label { font-size: 12.5px; color: var(--ink-soft); }
+.form-grid select { flex: 1; }
+.form-grid .controls { flex-wrap: nowrap; }
+
+.key-state { margin: 0; font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; }
+.key-state.ok { color: var(--accent); }
+.key-state.bad { color: var(--danger); }
+
+select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 7px;
+}
+select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* ---------- o atalho ---------- */
 .chord {
   display: inline-flex;
   align-items: center;
-  padding: 1px 7px;
-  border-radius: 5px;
-  background: var(--sunken);
+  justify-content: center;
+  min-width: 92px;
+  padding: 5px 12px;
   border: 1px solid var(--line);
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--ink);
+  border-radius: 6px;
+  background: var(--sunken);
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+.chord.recording {
+  background: var(--paper);
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  letter-spacing: normal;
 }
 
+/* ---------- o rodapé, que nunca muda de linha ---------- */
 footer {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-top: auto;
+  padding: 13px 32px;
   border-top: 1px solid var(--line);
-  padding-top: 12px;
-  margin-top: 18px;
 }
-footer #status { margin: 0; font-size: 12px; color: var(--danger); flex: 1; }
-#back { color: var(--ink-soft); border-color: transparent; background: none; padding-left: 0; }
-#back:hover:not(:disabled) { color: var(--accent); }
-#back[hidden] { display: none; }
-
+footer #status { margin: 0; flex: 1; font-size: 11.5px; color: var(--danger); min-height: 16px; }
+#back:disabled { opacity: 0; pointer-events: none; }

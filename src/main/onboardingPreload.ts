@@ -13,6 +13,9 @@ const bridge: OnboardingBridge = {
   requestMicrophone: () => ipcRenderer.invoke("onboarding-microphone"),
   openMicrophoneSettings: () => ipcRenderer.invoke("onboarding-microphone-settings"),
   chooseModel: (file: string) => ipcRenderer.invoke("onboarding-choose-model", file),
+  chooseProvider: (id: string) => ipcRenderer.invoke("onboarding-choose-provider", id),
+  chooseShortcut: (accelerator: string) =>
+    ipcRenderer.invoke("onboarding-choose-shortcut", accelerator),
   downloadModels: () => ipcRenderer.invoke("onboarding-download"),
   onProgress: (handler) => {
     ipcRenderer.on("onboarding-progress", (_event, progress: ModelProgress) =>
@@ -20,6 +23,7 @@ const bridge: OnboardingBridge = {
     );
   },
   setApiKey: (key: string) => ipcRenderer.invoke("preferences-api-key", key),
+  testApiKey: (key: string) => ipcRenderer.invoke("preferences-test-api-key", key),
   testShortcut: () => ipcRenderer.invoke("preferences-test-shortcut"),
   finish: () => ipcRenderer.send("onboarding-finish"),
 };

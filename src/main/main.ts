@@ -10,7 +10,7 @@ import {
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
 import { applyDictionary, type Entry } from "../shared/dictionary";
-import type { PreferencesSnapshot } from "../shared/bridge";
+import type { KeyCheck, PreferencesSnapshot } from "../shared/bridge";
 import type { Preferences } from "../shared/preferences";
 import { formatElapsed } from "../shared/elapsed";
 import { PRESENTATION, type State } from "../shared/states";
@@ -50,8 +50,8 @@ import {
   MODELS,
   requiredModels,
 } from "../shared/models";
-import { clearApiKey, hasApiKey, saveApiKey } from "./apiKey";
-import { rewriteOrRaw } from "./groq";
+import { clearApiKey, hasApiKey, loadApiKey, saveApiKey } from "./apiKey";
+import { checkApiKey, rewriteOrRaw } from "./groq";
 import { preferences, updatePreferences } from "./preferences";
 import {
   availableModels,
@@ -280,7 +280,7 @@ const openDictionaryEditor = (): void =>
   openWindow("editor", "Dicionário", { width: 640, height: 620 });
 
 const openOnboarding = (): void =>
-  openWindow("onboarding", "Bem-vindo", { width: 560, height: 640 });
+  openWindow("onboarding", "Bem-vindo", { width: 680, height: 412 });
 
 const openPreferences = (): void =>
   // Um teste de atalho armado não pode sobreviver à janela que o pediu: ele
@@ -414,6 +414,30 @@ ipcMain.handle("onboarding-choose-model", (_event, file: unknown) => {
   return onboardingState();
 });
 
+ipcMain.handle("onboarding-choose-provider", (_event, id: unknown) => {
+  if (typeof id === "string") updatePreferences({ provider: id });
+
+  return onboardingState();
+});
+
+/**
+ * Troca o atalho durante a primeira abertura.
+ *
+ * Re-registra na hora, como o `preferences-save` faz: sem isso a tela
+ * mostraria a combinação nova e o teste do passo seguinte esperaria a
+ * antiga — e o passo existe justamente para provar que a tecla chega.
+ */
+ipcMain.handle("onboarding-choose-shortcut", (_event, accelerator: unknown) => {
+  if (typeof accelerator === "string") {
+    const before = preferences().shortcut;
+    const saved = updatePreferences({ shortcut: accelerator });
+
+    if (saved.shortcut !== before) reapplyShortcut();
+  }
+
+  return onboardingState();
+});
+
 /**
  * Baixa o que falta, um de cada vez.
  *
@@ -506,6 +530,24 @@ ipcMain.handle("preferences-api-key", async (_event, key: unknown) => {
   await saveApiKey(value);
 
   return true;
+});
+
+/**
+ * Testa a chave contra o provedor, sem gravá-la.
+ *
+ * Chave vazia testa a que já está guardada: nas preferências o campo fica em
+ * branco por segurança — a chave nunca volta pelo IPC — e "Testar" ali
+ * pergunta sobre a que está em uso.
+ */
+ipcMain.handle("preferences-test-api-key", async (_event, key: unknown): Promise<KeyCheck> => {
+  const typed = typeof key === "string" ? key.trim() : "";
+  const value = typed.length > 0 ? typed : await loadApiKey();
+
+  if (value === undefined || value.length === 0) {
+    return { kind: "rejected" };
+  }
+
+  return checkApiKey(value);
 });
 
 ipcMain.handle("preferences-test-shortcut", () => armShortcutTest());

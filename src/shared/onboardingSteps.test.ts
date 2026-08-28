@@ -9,6 +9,7 @@ const state = (over: Partial<OnboardingState> = {}): OnboardingState => ({
     { file: "b.bin", label: "B", bytes: 20, present: true },
   ],
   hasApiKey: true,
+  provider: "groq",
   shortcut: "Alt+Command+G",
   chosenModel: "ggml-large-v3-turbo-q5_0.bin",
   ...over,
@@ -19,10 +20,10 @@ describe("STEPS", () => {
     expect(STEPS.map((s) => s.id)).toEqual(["microphone", "models", "key", "shortcut"]);
   });
 
-  it("só a chave é pulável", () => {
-    // A §9 marca a chave como opcional — sem ela o app funciona em modo cru.
-    // Microfone e modelos não têm alternativa.
-    expect(STEPS.filter((s) => s.skippable).map((s) => s.id)).toEqual(["key"]);
+  it("nenhum é pulável", () => {
+    // A chave deixou de ser opcional no wizard: adiar empurrava a descoberta
+    // de que ela está errada para o meio da primeira ditação.
+    expect(STEPS).toHaveLength(4);
   });
 });
 
@@ -69,10 +70,10 @@ describe("firstPending", () => {
     expect(firstPending(state(), false)).toBe("shortcut");
   });
 
-  it("a chave pendente não segura o wizard", () => {
-    // É opcional: parar nela obrigaria a decidir sobre o Groq antes de
-    // confirmar o atalho, que é o passo que fecha o onboarding.
-    expect(firstPending(state({ hasApiKey: false }), true)).toBeUndefined();
+  it("a chave pendente SEGURA o wizard", () => {
+    // O oposto de antes, e de propósito: sem chave o passo da reescrita não
+    // está feito, e o wizard para nele.
+    expect(firstPending(state({ hasApiKey: false }), true)).toBe("key");
   });
 
   it("tudo feito não tem pendência", () => {

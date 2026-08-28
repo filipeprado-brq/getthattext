@@ -21,3 +21,6 @@ vendor/whisper/*
 
 # Saída do empacotamento
 release/
+
+# As fotos das janelas são artefato de verificação, não fonte.
+.scratch/shots/

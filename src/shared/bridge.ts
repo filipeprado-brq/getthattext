@@ -112,6 +112,18 @@ declare global {
   }
 }
 
+/**
+ * O que o provedor respondeu ao teste da chave.
+ *
+ * Três respostas, não duas: recusa pede outra chave, e rede fora pede
+ * tentar de novo. Reduzir a um booleano faria a tela mandar você trocar uma
+ * chave boa porque o wi-fi caiu.
+ */
+export type KeyCheck =
+  | { kind: "ok" }
+  | { kind: "rejected" }
+  | { kind: "unreachable"; why: string };
+
 /** O andamento de um download, empurrado do main para a tela. */
 export type ModelProgress = { file: string; received: number; total: number };
 
@@ -123,11 +135,17 @@ export type OnboardingBridge = {
   openMicrophoneSettings(): Promise<void>;
   /** Guarda o modelo escolhido antes de baixar. */
   chooseModel(file: string): Promise<OnboardingState>;
+  /** Guarda o provedor de reescrita escolhido. */
+  chooseProvider(id: string): Promise<OnboardingState>;
+  /** Troca o atalho e o re-registra, como fazem as preferências. */
+  chooseShortcut(accelerator: string): Promise<OnboardingState>;
   /** Baixa o que falta. Rejeita com mensagem utilizável. */
   downloadModels(): Promise<OnboardingState>;
   onProgress(handler: (progress: ModelProgress) => void): void;
   /** Guarda a chave, ou apaga se vier vazia. */
   setApiKey(key: string): Promise<boolean>;
+  /** Pergunta ao provedor se a chave responde. Vazia testa a guardada. */
+  testApiKey(key: string): Promise<KeyCheck>;
   /**
    * Espera você apertar o atalho.
    *

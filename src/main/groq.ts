@@ -1,4 +1,5 @@
 import Groq, { AuthenticationError } from "groq-sdk";
+import type { KeyCheck } from "../shared/bridge";
 import type { Entry } from "../shared/dictionary";
 import { cleanRewrite, systemPromptFor } from "../shared/rewrite";
 import { clearApiKey, loadApiKey } from "./apiKey";
@@ -60,6 +61,40 @@ export type Rewritten =
 /** A chave que o Groq recusou — a única falha que exige ação sua. */
 function isInvalidApiKey(error: unknown): boolean {
   return error instanceof AuthenticationError;
+}
+
+/**
+ * O teste é uma LISTAGEM de modelos, não uma reescrita.
+ *
+ * É a chamada mais barata do Groq: não gasta token e não depende do modelo
+ * escolhido continuar existindo. Sem retentativa e com timeout curto — quem
+ * apertou "Testar" está olhando para a tela, e a pergunta é só "essa chave
+ * funciona".
+ */
+const CHECK_TIMEOUT_MS = 8_000;
+
+/**
+ * A chave responde?
+ *
+ * Existe porque a chave só era exercitada na PRIMEIRA DITAÇÃO: quem colava
+ * uma chave errada descobria depois de falar, com o texto cru na área de
+ * transferência e uma mensagem que fala de reescrita, não de chave (#19).
+ *
+ * Recusa e falha de rede são respostas diferentes e não podem virar o mesmo
+ * recado: uma pede outra chave, a outra pede tentar de novo.
+ */
+export async function checkApiKey(apiKey: string): Promise<KeyCheck> {
+  const client = new Groq({ apiKey, timeout: CHECK_TIMEOUT_MS, maxRetries: 0 });
+
+  try {
+    await client.models.list();
+
+    return { kind: "ok" };
+  } catch (error) {
+    if (isInvalidApiKey(error)) return { kind: "rejected" };
+
+    return { kind: "unreachable", why: describe(error) };
+  }
 }
 
 /**

@@ -1,48 +1,124 @@
 /*
-  As opções de modelo, compartilhadas pelo onboarding e pelas preferências.
-  Ficavam duplicadas nos dois arquivos e já tinham divergido sozinhas — uma
-  marcava "no disco", a outra "falta", invertendo o sentido da mesma classe.
-*/
-#choices { display: flex; flex-direction: column; gap: 6px; }
+  Os cards de modelo, compartilhados pelo onboarding e pelas preferências.
+  Ficavam duplicados nos dois arquivos e já tinham divergido sozinhos — um
+  marcava "no disco", o outro "falta", invertendo o sentido da mesma classe.
 
-.choice {
-  display: grid;
-  grid-template-columns: 16px 1fr auto;
-  gap: 4px 10px;
-  align-items: baseline;
-  padding: 8px 10px;
+  Três cards horizontais de mesma largura e mesma altura: comparar é a única
+  coisa que se faz com eles, e altura desigual já é uma resposta antes de
+  você ler.
+*/
+.choices { display: flex; gap: 10px; align-items: stretch; }
+.card-wrap { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
+
+.model-card {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  height: 116px;
+  padding: 11px 12px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 10px;
   background: var(--paper);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
 }
-.choice:hover { border-color: var(--accent); }
-.choice.picked {
+.model-card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+
+/* A seleção é a BORDA: um círculo de rádio ao lado de um card inteiro
+   clicável seria o mesmo estado dito duas vezes. */
+.model-card[aria-checked="true"] {
   border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
   background: color-mix(in srgb, var(--accent) 6%, var(--paper));
 }
-.choice input { margin: 0; accent-color: var(--accent); }
+.model-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.choice-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-.choice-size { font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.choice-tradeoff {
-  grid-column: 2 / -1;
-  font-size: 11.5px;
-  color: var(--ink-soft);
-  line-height: 1.45;
-}
-
-.badge {
-  display: inline-block;
-  margin-left: 7px;
-  padding: 1px 6px;
+.card-head { display: flex; align-items: flex-start; gap: 6px; }
+.card-tipo { font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; line-height: 1.2; }
+.card-badge {
+  margin-left: auto;
+  flex: none;
+  padding: 1px 6px 2px;
   border-radius: 9px;
   background: var(--accent);
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  vertical-align: 1px;
+  letter-spacing: 0.03em;
 }
 
-/* Só um sentido para a classe: `absent` = ainda não está no disco. */
-.choice.absent .choice-size::after { content: " · falta baixar"; }
+.card-meta { margin-top: 3px; }
+.card-file {
+  display: block;
+  font: 10.5px/1.35 ui-monospace, "SF Mono", monospace;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-size { display: block; margin-top: 3px; font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.card-size b { font-weight: 600; color: var(--ink); }
+.card-size .missing { color: var(--warn); }
+.card-size .here { color: var(--accent); }
+
+/* A potência: só os traços. O número e o rótulo estão na explicação. */
+.power { display: flex; gap: 3px; margin-left: auto; align-self: flex-end; }
+.power i { width: 11px; height: 5px; border-radius: 2px; background: var(--line); display: block; }
+.power i.on { background: var(--accent); }
+.power[data-level="3"] i.on { background: var(--warn); }
+.power[data-level="2"] i.on,
+.power[data-level="1"] i.on { background: var(--danger); }
+
+.info {
+  position: absolute;
+  left: 9px;
+  bottom: 8px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  cursor: help;
+  z-index: 2;
+}
+.info:hover, .info[aria-expanded="true"] { color: var(--accent); }
+.info:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.tip {
+  position: absolute;
+  bottom: 32px;
+  left: 0;
+  width: 252px;
+  padding: 10px 12px 11px;
+  border-radius: 8px;
+  background: var(--tip);
+  color: var(--tip-ink);
+  font-size: 11.5px;
+  line-height: 1.5;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(3px);
+  transition: opacity 0.13s ease, transform 0.13s ease, visibility 0.13s;
+  z-index: 4;
+}
+.tip.right { left: auto; right: 0; }
+.tip b { display: block; font-weight: 600; margin-bottom: 4px; }
+.info:hover + .tip,
+.info:focus-visible + .tip,
+.info[aria-expanded="true"] + .tip { opacity: 1; visibility: visible; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .model-card, .tip { transition-duration: 0.01ms; }
+}

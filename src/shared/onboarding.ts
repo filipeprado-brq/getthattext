@@ -27,8 +27,10 @@ export type OnboardingState = {
   models: readonly ModelStatus[];
   /** O modelo de transcrição escolhido. */
   chosenModel: string;
-  /** Opcional: sem chave o app funciona em modo cru. */
+  /** Existe chave guardada? A chave em si nunca cruza o IPC. */
   hasApiKey: boolean;
+  /** O provedor de reescrita escolhido. */
+  provider: string;
   /**
    * O atalho EM VIGOR, não o padrão.
    *

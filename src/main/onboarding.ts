@@ -28,6 +28,7 @@ export function onboardingState(): OnboardingState {
       present: present.includes(model.file),
     })),
     hasApiKey: hasApiKey(),
+    provider: preferences().provider,
     shortcut: preferences().shortcut,
   };
 }
@@ -35,9 +36,12 @@ export function onboardingState(): OnboardingState {
 /**
  * O app está pronto para ditar?
  *
- * A chave do Groq NÃO entra: sem ela o app funciona em modo cru, e a spec
- * (seção 9) marca esse passo como opcional. Microfone e modelos, sim — sem
- * eles não há o que fazer.
+ * A chave NÃO entra, mesmo tendo virado passo obrigatório do wizard. São
+ * perguntas diferentes: o wizard exige a chave uma vez, na primeira
+ * abertura, para você não descobrir que ela está errada no meio de uma
+ * ditação. Já apagar a chave depois não pode impedir ditar — o app degrada
+ * para o texto cru, e reabrir o onboarding a cada ditação seria pior que o
+ * problema.
  */
 export function isReady(state: OnboardingState): boolean {
   return state.microphone === "granted" && state.models.every((model) => model.present);

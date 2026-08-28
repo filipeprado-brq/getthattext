@@ -12,19 +12,24 @@ export type StepId = "microphone" | "models" | "key" | "shortcut";
 export type Step = {
   id: StepId;
   title: string;
-  /**
-   * Dá para seguir sem completar?
-   *
-   * Só a chave. A §9 a marca como opcional — sem ela o app funciona em modo
-   * cru. Microfone e modelos não têm alternativa: sem eles não há ditação.
-   */
-  skippable?: true;
 };
 
+/**
+ * Os quatro, todos obrigatórios.
+ *
+ * A chave era pulável — a §9 a marcava como opcional, e o wizard oferecia
+ * "Agora não". Deixou de ser: adiar a decisão empurrava a descoberta de que
+ * a chave está errada para a primeira ditação, longe do campo onde ela foi
+ * colada. Quem não quer reescrita desliga em Preferências, que é uma
+ * escolha nomeada em vez de um adiamento.
+ *
+ * Isto vale para o WIZARD, não para o app: `isReady` continua sem exigir
+ * chave, e ditar sem ela segue entregando o texto cru.
+ */
 export const STEPS: readonly Step[] = [
   { id: "microphone", title: "Microfone" },
   { id: "models", title: "Modelos" },
-  { id: "key", title: "Chave do Groq", skippable: true },
+  { id: "key", title: "Reescrita" },
   { id: "shortcut", title: "O atalho" },
 ];
 
@@ -54,17 +59,14 @@ export function isStepDone(
 }
 
 /**
- * O primeiro passo que ainda falta, ignorando os puláveis.
+ * O primeiro passo que ainda falta.
  *
- * Reabrir o onboarding não pode fazer você refazer o que já fez — e parar
- * na chave obrigaria a decidir sobre o Groq antes de confirmar o atalho,
- * que é o passo que fecha o onboarding.
+ * Reabrir o onboarding não pode fazer você refazer o que já fez: o wizard
+ * abre onde parou, não no começo.
  */
 export function firstPending(
   state: OnboardingState,
   shortcutConfirmed: boolean,
 ): StepId | undefined {
-  return STEPS.find(
-    (step) => !step.skippable && !isStepDone(state, step.id, shortcutConfirmed),
-  )?.id;
+  return STEPS.find((step) => !isStepDone(state, step.id, shortcutConfirmed))?.id;
 }
