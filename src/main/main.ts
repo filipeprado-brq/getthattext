@@ -9,6 +9,13 @@ import {
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
+import { SHORTCUT_ACCELERATOR, SHORTCUT_LABEL } from "../shared/shortcut";
+import {
+  isShortcutRegistered,
+  keepShortcutRegistered,
+  releaseShortcut,
+  warnIfShortcutMissing,
+} from "./shortcut";
 import { rewriteOrRaw } from "./groq";
 import { hasSpeech, transcribe } from "./whisper";
 
@@ -119,6 +126,7 @@ function toggle(): void {
   // primeira transcreve exigiria fila, e isso não é escopo deste ticket.
 }
 
+
 function createHiddenWindow(): void {
   hidden = new BrowserWindow({
     show: false,
@@ -145,9 +153,24 @@ function createTray(): void {
   // é mostrado sob demanda em vez de fixado no tray.
   tray.on("click", toggle);
   tray.on("right-click", () => {
+    const shortcutRegistered = isShortcutRegistered();
     tray?.popUpContextMenu(
       Menu.buildFromTemplate([
-        { label: "Ditar", click: toggle, enabled: state !== "processing" },
+        {
+          label: "Ditar",
+          click: toggle,
+          enabled: state !== "processing",
+          // Só exibição: quem dispara é o globalShortcut, e um accelerator
+          // ativo aqui abriria caminho para o atalho disparar duas vezes.
+          ...(shortcutRegistered
+            ? { accelerator: SHORTCUT_ACCELERATOR, registerAccelerator: false }
+            : {}),
+        },
+        // O aviso permanente: o diálogo do boot você fecha e esquece, isto
+        // fica enquanto o atalho não estiver valendo.
+        ...(shortcutRegistered
+          ? []
+          : [{ label: `⚠ ${SHORTCUT_LABEL} não registrado`, enabled: false }]),
         { type: "separator" },
         {
           label: "Copiar transcrição crua",
@@ -249,8 +272,12 @@ void app.whenReady().then(() => {
   // Sem ícone no Dock: é um app de barra de menu.
   app.dock?.hide();
   createHiddenWindow();
+  keepShortcutRegistered(toggle);
   createTray();
+  warnIfShortcutMissing();
 });
+
+app.on("will-quit", releaseShortcut);
 
 // A janela oculta nunca é fechada pelo usuário; sem este handler o Electron
 // encerraria o app se ela sumisse por qualquer motivo.
