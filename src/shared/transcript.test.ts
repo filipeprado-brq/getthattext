@@ -64,7 +64,8 @@ describe("cleanTranscript", () => {
   });
 
   it("devolve string vazia quando não houve fala", () => {
-    // Sem portão VAD ainda, mas o vazio precisa ser representável.
+    // O portão de fala já barra a gravação sem fala, mas o Whisper ainda
+    // pode não achar palavra nenhuma num áudio que passou por ele.
     expect(cleanTranscript("")).toBe("");
     expect(cleanTranscript("   \n  \n")).toBe("");
   });

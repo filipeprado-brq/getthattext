@@ -11,7 +11,8 @@
     "build:renderer": "tsc -p tsconfig.renderer.json",
     "build": "npm run build:main && npm run build:renderer && npm run copy:assets",
     "copy:assets": "cp src/renderer/index.html src/renderer/pcm-worklet.js dist/renderer/",
-    "start": "npm run build && electron dist/main/main.js"
+    "start": "npm run build && electron dist/main/main.js",
+    "verify:speech-gate": "node scripts/verify-speech-gate.mjs"
   },
   "keywords": [],
   "author": "",

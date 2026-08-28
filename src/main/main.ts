@@ -9,7 +9,7 @@ import {
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
-import { transcribe } from "./whisper";
+import { hasSpeech, transcribe } from "./whisper";
 
 /**
  * O app vive na barra de menu e não tem janela visível.
@@ -21,7 +21,15 @@ let hidden: BrowserWindow | undefined;
 let tray: Tray | undefined;
 
 /** Estados que o app assume durante uma ditação. */
-type State = "idle" | "opening" | "recording" | "processing" | "done" | "empty" | "failed";
+type State =
+  | "idle"
+  | "opening"
+  | "recording"
+  | "processing"
+  | "done"
+  | "unguarded"
+  | "empty"
+  | "failed";
 
 let state: State = "idle";
 
@@ -41,6 +49,7 @@ const LABELS: Record<State, string> = {
   recording: "gravando",
   processing: "transcrevendo…",
   done: "✓ copiado",
+  unguarded: "✓ copiado, sem portão",
   empty: "nada ouvido",
   failed: "✕ falhou",
 };
@@ -48,11 +57,17 @@ const LABELS: Record<State, string> = {
 /**
  * Estados terminais voltam a ocioso sozinhos.
  *
- * Os três precisam ser DISTINGUÍVEIS: um texto copiado, uma gravação sem
- * fala e uma falha real são resultados diferentes. Se os três voltassem em
- * silêncio ao mesmo ícone limpo, você aprenderia a ignorar todos.
+ * Eles precisam ser DISTINGUÍVEIS: um texto copiado, um texto copiado sem o
+ * portão ter rodado, uma gravação sem fala e uma falha real são resultados
+ * diferentes. Se todos voltassem em silêncio ao mesmo ícone limpo, você
+ * aprenderia a ignorar todos.
  */
-const TERMINAL: ReadonlySet<State> = new Set<State>(["done", "empty", "failed"]);
+const TERMINAL: ReadonlySet<State> = new Set<State>([
+  "done",
+  "unguarded",
+  "empty",
+  "failed",
+]);
 
 function setState(next: State): void {
   state = next;
@@ -123,6 +138,35 @@ function createTray(): void {
   });
 }
 
+/** O que o portão de fala respondeu sobre uma gravação. */
+type GateVerdict = "speech" | "silence" | "unavailable";
+
+/**
+ * Roda o portão de fala e classifica o desfecho, inclusive o dele próprio
+ * falhar.
+ *
+ * "Indisponível" existe porque os dois princípios da spec (seção 10) valem
+ * ao mesmo tempo e puxam para lados diferentes:
+ *
+ * 1. Nunca descartar uma transcrição — então um portão quebrado não pode
+ *    virar "não houve fala": isso engoliria toda ditação em silêncio.
+ * 2. Nunca falhar em silêncio — então um portão quebrado também não pode
+ *    virar "tudo certo": sem VAD o Whisper volta a alucinar `Obrigado.` em
+ *    gravação vazia, e o app sinalizaria êxito para lixo.
+ *
+ * O desenho é o mesmo que a spec já usa para o device de áudio trocando no
+ * meio: transcreve assim mesmo, mas com variante de erro no ícone. Continuar
+ * E sinalizar.
+ */
+async function runSpeechGate(wav: Buffer): Promise<GateVerdict> {
+  try {
+    return (await hasSpeech(wav)) ? "speech" : "silence";
+  } catch (error) {
+    console.error("portão de fala indisponível:", error);
+    return "unavailable";
+  }
+}
+
 ipcMain.on("audio-flowing", () => {
   if (state === "opening") setState("recording");
 });
@@ -136,16 +180,26 @@ ipcMain.on("capture-failed", (_event, reason: string) => {
 
 ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
   setState("processing");
+  const wav = Buffer.from(bytes);
+
   try {
-    const text = await transcribe(Buffer.from(bytes));
-    // Texto vazio é resultado possível enquanto não há portão de fala (#3):
-    // não sobrescrever a área de transferência com nada.
+    const verdict = await runSpeechGate(wav);
+    if (verdict === "silence") {
+      setState("empty");
+      return;
+    }
+
+    const text = await transcribe(wav);
+    // Vazio é resultado legítimo, não erro: o portão diz que houve fala, mas
+    // o Whisper pode não achar palavra nenhuma nela. Não sobrescrever a área
+    // de transferência com nada.
     if (text.length === 0) {
       setState("empty");
       return;
     }
+
     clipboard.writeText(text);
-    setState("done");
+    setState(verdict === "unavailable" ? "unguarded" : "done");
   } catch (error) {
     console.error("transcrição falhou:", error);
     setState("failed");
