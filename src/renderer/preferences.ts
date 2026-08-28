@@ -1,7 +1,7 @@
 import type { PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
 import { LANGUAGES } from "../shared/preferences.js";
-import { acceleratorToSymbols, isValidAccelerator } from "../shared/shortcut.js";
+import { acceleratorFromChord, acceleratorToSymbols } from "../shared/shortcut.js";
 
 /**
  * A tela de preferências.
@@ -16,7 +16,8 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
-const shortcutInput = el<HTMLInputElement>("shortcut");
+const shortcutOutput = el("shortcut");
+const recordButton = el<HTMLButtonElement>("record");
 const shortcutNote = el("shortcut-note");
 const testButton = el<HTMLButtonElement>("test");
 const languageSelect = el<HTMLSelectElement>("language");
@@ -29,6 +30,9 @@ const keyNote = el("key-note");
 const loginBox = el<HTMLInputElement>("login");
 const loginNote = el("login-note");
 const status = el("status");
+
+/** O atalho em vigor, para os recados não dependerem do DOM. */
+let chosen = "";
 
 function say(message: string): void {
   status.textContent = message;
@@ -52,8 +56,9 @@ async function save(patch: Parameters<typeof window.preferencesBridge.save>[0]) 
 function render(snapshot: PreferencesSnapshot): void {
   const { preferences, models, loginItem, hasApiKey } = snapshot;
 
-  shortcutInput.value = preferences.shortcut;
-  showShortcutNote(preferences.shortcut);
+  chosen = preferences.shortcut;
+  shortcutOutput.textContent = acceleratorToSymbols(chosen);
+  showShortcutNote(chosen);
 
   languageSelect.replaceChildren(
     ...LANGUAGES.map(({ code, label }) => new Option(label, code, false, code === preferences.language)),
@@ -142,19 +147,64 @@ function showLoginState(state: PreferencesSnapshot["loginItem"]): void {
 
 /* ---------- os controles ---------- */
 
-shortcutInput.addEventListener("change", () => {
-  if (!isValidAccelerator(shortcutInput.value)) {
-    note(
-      shortcutNote,
-      "Isso não é um atalho registrável: precisa de ao menos um modificador " +
-        "(Command, Alt, Control, Shift) e exatamente uma tecla.",
-      "warn",
-    );
+/**
+ * Grava o atalho apertando as teclas.
+ *
+ * Um campo de texto exigiria saber escrever `Alt+Command+G`, que é sintaxe
+ * do Electron — nem todo mundo sabe, e ninguém deveria precisar. Enquanto
+ * grava, `preventDefault` impede que a combinação faça o que faria: você
+ * está escolhendo o atalho, não usando o computador.
+ */
+function startRecording(): void {
+  recordButton.disabled = true;
+  testButton.disabled = true;
+  shortcutOutput.classList.add("recording");
+  shortcutOutput.textContent = "Aperte a combinação…";
+  note(shortcutNote, "Esc cancela.");
 
-    return;
-  }
-  void save({ shortcut: shortcutInput.value });
-});
+  const onKey = (event: KeyboardEvent): void => {
+    event.preventDefault();
+
+    if (event.code === "Escape" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      stopRecording();
+
+      return;
+    }
+
+    const accelerator = acceleratorFromChord(event);
+    if (accelerator === undefined) {
+      // Ainda incompleto — modificador sozinho, ou tecla intraduzível.
+      shortcutOutput.textContent = acceleratorToSymbols(
+        [
+          event.ctrlKey ? "Control" : "",
+          event.altKey ? "Alt" : "",
+          event.shiftKey ? "Shift" : "",
+          event.metaKey ? "Command" : "",
+        ]
+          .filter((name) => name.length > 0)
+          .join("+"),
+      ) || "Aperte a combinação…";
+
+      return;
+    }
+
+    stopRecording();
+    void save({ shortcut: accelerator });
+  };
+
+  const stopRecording = (): void => {
+    window.removeEventListener("keydown", onKey, true);
+    recordButton.disabled = false;
+    testButton.disabled = false;
+    shortcutOutput.classList.remove("recording");
+    shortcutOutput.textContent = acceleratorToSymbols(chosen);
+    showShortcutNote(chosen);
+  };
+
+  window.addEventListener("keydown", onKey, true);
+}
+
+recordButton.addEventListener("click", startRecording);
 
 /**
  * O teste de atalho.
@@ -170,13 +220,13 @@ testButton.addEventListener("click", () => {
   testButton.disabled = true;
   testButton.dataset["listening"] = "true";
   testButton.textContent = "Aperte agora…";
-  note(shortcutNote, `Aperte ${acceleratorToSymbols(shortcutInput.value)}.`);
+  note(shortcutNote, `Aperte ${acceleratorToSymbols(chosen)}.`);
 
   void window.preferencesBridge
     .testShortcut()
     .then((result) => {
       if (result === "cancelled") {
-        showShortcutNote(shortcutInput.value);
+        showShortcutNote(chosen);
 
         return;
       }

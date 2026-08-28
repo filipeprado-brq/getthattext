@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  acceleratorFromChord,
   acceleratorToSymbols,
   isValidAccelerator,
+  type KeyChord,
   SHORTCUT_ACCELERATOR,
 } from "./shortcut";
 
@@ -74,5 +76,88 @@ describe("isValidAccelerator", () => {
     expect(isValidAccelerator("")).toBe(false);
     expect(isValidAccelerator("+++")).toBe(false);
     expect(isValidAccelerator("Comand+G")).toBe(false);
+  });
+});
+
+describe("acceleratorFromChord", () => {
+  /** O que o teclado entrega, com nada apertado. */
+  const nothing: KeyChord = {
+    code: "",
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+  };
+
+  it("monta o accelerator a partir das teclas apertadas", () => {
+    expect(
+      acceleratorFromChord({ ...nothing, code: "KeyG", metaKey: true, altKey: true }),
+    ).toBe("Alt+Command+G");
+  });
+
+  it("usa ordem canônica, não a ordem em que o teclado reporta", () => {
+    expect(
+      acceleratorFromChord({
+        ...nothing,
+        code: "KeyZ",
+        metaKey: true,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: true,
+      }),
+    ).toBe("Control+Alt+Shift+Command+Z");
+  });
+
+  it("RECUSA tecla sem modificador", () => {
+    // Gravar "G" sozinho sequestraria a letra G em todo o sistema, e é o
+    // primeiro acidente possível num campo que captura teclado.
+    expect(acceleratorFromChord({ ...nothing, code: "KeyG" })).toBeUndefined();
+  });
+
+  it("recusa modificador sozinho, que é o estado de quem ainda está apertando", () => {
+    expect(
+      acceleratorFromChord({ ...nothing, code: "MetaLeft", metaKey: true }),
+    ).toBeUndefined();
+    expect(
+      acceleratorFromChord({ ...nothing, code: "ShiftRight", shiftKey: true }),
+    ).toBeUndefined();
+  });
+
+  it("traduz dígito, função e teclas nomeadas", () => {
+    expect(acceleratorFromChord({ ...nothing, code: "Digit1", ctrlKey: true })).toBe(
+      "Control+1",
+    );
+    expect(acceleratorFromChord({ ...nothing, code: "F5", altKey: true })).toBe("Alt+F5");
+    expect(acceleratorFromChord({ ...nothing, code: "Space", metaKey: true })).toBe(
+      "Command+Space",
+    );
+    expect(acceleratorFromChord({ ...nothing, code: "Enter", metaKey: true })).toBe(
+      "Command+Return",
+    );
+    expect(acceleratorFromChord({ ...nothing, code: "ArrowUp", metaKey: true })).toBe(
+      "Command+Up",
+    );
+  });
+
+  it("traduz pontuação, que é onde mora o ⌘/ que o usuário vai tentar", () => {
+    expect(acceleratorFromChord({ ...nothing, code: "Slash", metaKey: true })).toBe(
+      "Command+/",
+    );
+    expect(acceleratorFromChord({ ...nothing, code: "Comma", metaKey: true })).toBe(
+      "Command+,",
+    );
+  });
+
+  it("recusa tecla que não sabe traduzir em vez de inventar", () => {
+    // Um accelerator inventado registra sem erro e nunca dispara.
+    expect(
+      acceleratorFromChord({ ...nothing, code: "IntlBackslash", metaKey: true }),
+    ).toBeUndefined();
+  });
+
+  it("o que ele produz passa pela própria validação", () => {
+    const built = acceleratorFromChord({ ...nothing, code: "KeyK", ctrlKey: true });
+    expect(built).toBeDefined();
+    expect(isValidAccelerator(built ?? "")).toBe(true);
   });
 });

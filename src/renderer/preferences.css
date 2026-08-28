@@ -46,3 +46,29 @@ input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var
 .note.good { color: var(--ink-soft); }
 
 #test[data-listening="true"] { background: var(--accent); border-color: transparent; color: #fff; }
+
+/*
+  O atalho é MOSTRADO, não digitado: sintaxe de accelerator do Electron
+  ("Alt+Command+G") não deveria vazar para a interface.
+*/
+.chord {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--sunken);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.chord.recording {
+  background: var(--paper);
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  letter-spacing: normal;
+}
