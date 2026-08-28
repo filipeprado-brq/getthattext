@@ -9,6 +9,7 @@ import {
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
+import { rewriteOrRaw } from "./groq";
 import { hasSpeech, transcribe } from "./whisper";
 
 /**
@@ -27,11 +28,25 @@ type State =
   | "recording"
   | "processing"
   | "done"
+  | "raw"
   | "unguarded"
   | "empty"
   | "failed";
 
 let state: State = "idle";
+
+/**
+ * A transcrição crua da última ditação, recuperável pelo menu.
+ *
+ * SÓ MEMÓRIA, de propósito: isto não é histórico e nada disso vai para o
+ * disco. Existe porque a reescrita pode distorcer, e o texto longo é
+ * justamente onde você menos pega o erro — o cru recuperável é o seguro
+ * barato que dispensa uma janela de revisão a cada ditação.
+ *
+ * Uma gravação sem fala não apaga o cru anterior: ela não produziu nada,
+ * então não tem o que substituir.
+ */
+let lastTranscript: string | undefined;
 
 /** Quanto tempo um estado terminal fica visível antes de voltar a ocioso. */
 const TERMINAL_MS = 2000;
@@ -49,6 +64,7 @@ const LABELS: Record<State, string> = {
   recording: "gravando",
   processing: "transcrevendo…",
   done: "✓ copiado",
+  raw: "✓ copiado (cru)",
   unguarded: "✓ copiado, sem portão",
   empty: "nada ouvido",
   failed: "✕ falhou",
@@ -57,13 +73,14 @@ const LABELS: Record<State, string> = {
 /**
  * Estados terminais voltam a ocioso sozinhos.
  *
- * Eles precisam ser DISTINGUÍVEIS: um texto copiado, um texto copiado sem o
- * portão ter rodado, uma gravação sem fala e uma falha real são resultados
- * diferentes. Se todos voltassem em silêncio ao mesmo ícone limpo, você
- * aprenderia a ignorar todos.
+ * Eles precisam ser DISTINGUÍVEIS: um texto reescrito, um texto cru, um
+ * texto copiado sem o portão ter rodado, uma gravação sem fala e uma falha
+ * real são resultados diferentes. Se todos voltassem em silêncio ao mesmo
+ * ícone limpo, você aprenderia a ignorar todos.
  */
 const TERMINAL: ReadonlySet<State> = new Set<State>([
   "done",
+  "raw",
   "unguarded",
   "empty",
   "failed",
@@ -132,6 +149,14 @@ function createTray(): void {
       Menu.buildFromTemplate([
         { label: "Ditar", click: toggle, enabled: state !== "processing" },
         { type: "separator" },
+        {
+          label: "Copiar transcrição crua",
+          enabled: lastTranscript !== undefined,
+          click: () => {
+            if (lastTranscript !== undefined) clipboard.writeText(lastTranscript);
+          },
+        },
+        { type: "separator" },
         { label: "Sair", role: "quit" },
       ]),
     );
@@ -189,17 +214,31 @@ ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
       return;
     }
 
-    const text = await transcribe(wav);
+    const transcript = await transcribe(wav);
     // Vazio é resultado legítimo, não erro: o portão diz que houve fala, mas
     // o Whisper pode não achar palavra nenhuma nela. Não sobrescrever a área
     // de transferência com nada.
-    if (text.length === 0) {
+    if (transcript.length === 0) {
       setState("empty");
       return;
     }
 
-    clipboard.writeText(text);
-    setState(verdict === "unavailable" ? "unguarded" : "done");
+    lastTranscript = transcript;
+
+    const rewritten = await rewriteOrRaw(transcript);
+    if (rewritten.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
+
+    clipboard.writeText(
+      rewritten.kind === "rewritten" ? rewritten.text : transcript,
+    );
+
+    // As duas degradações são independentes e podem acontecer juntas. O cru
+    // vence porque descreve o que está no clipboard agora, que é a decisão
+    // do próximo segundo — o ticket 12 promete que você sabe que recebeu o
+    // cru PELO ÍCONE. "Sem portão" é instalação quebrada: condição
+    // permanente, que se anuncia sozinha nas outras ditações.
+    if (rewritten.kind === "raw") setState("raw");
+    else setState(verdict === "unavailable" ? "unguarded" : "done");
   } catch (error) {
     console.error("transcrição falhou:", error);
     setState("failed");
