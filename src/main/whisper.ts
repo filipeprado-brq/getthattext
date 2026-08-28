@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { MODELS } from "../shared/models";
 import { modelPath, modelsDir } from "./models";
 import { preferences } from "./preferences";
+import { type FailureKind, isModelLoadFailure } from "../shared/failures";
 import { buildVadArgs, countSpeechSegments } from "../shared/speechGate";
 import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
 
@@ -36,6 +37,24 @@ export function availableModels(): string[] {
 }
 
 /**
+ * Uma falha do whisper, já classificada na origem.
+ *
+ * A classificação nasce aqui porque é aqui que a informação existe: o
+ * `spawn` sabe se o executável está lá, e o stderr sabe se o modelo
+ * carregou. Reconstruir isso depois, lendo mensagem formatada, seria
+ * adivinhar a partir de texto que eu mesmo escrevi.
+ */
+export class WhisperFailure extends Error {
+  constructor(
+    readonly kind: FailureKind,
+    message: string,
+  ) {
+    super(message);
+    this.name = "WhisperFailure";
+  }
+}
+
+/**
  * Roda um binário do whisper.cpp com o WAV no stdin e devolve o stdout.
  *
  * Sem arquivo temporário: sem disco, sem limpeza a errar. Os logs saem no
@@ -56,12 +75,30 @@ function runWithWavOnStdin(
     child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
 
     child.on("error", (error) => {
-      reject(new Error(`Não foi possível executar ${bin}: ${error.message}`));
+      const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
+      reject(
+        new WhisperFailure(
+          missing ? "binary-missing" : "other",
+          `Não foi possível executar ${bin}: ${error.message}`,
+        ),
+      );
     });
 
     child.on("close", (code) => {
-      if (code === 0) resolve(stdout);
-      else reject(new Error(`${bin} saiu com código ${code}. ${stderr.trim()}`));
+      if (code === 0) {
+        resolve(stdout);
+
+        return;
+      }
+
+      // Modelo ausente, corrompido e truncado dão a MESMA mensagem aqui —
+      // medido. Quem distingue é quem olha o arquivo, depois.
+      reject(
+        new WhisperFailure(
+          isModelLoadFailure(stderr) ? "model-load" : "other",
+          `${bin} saiu com código ${code}. ${stderr.trim()}`,
+        ),
+      );
     });
 
     child.stdin.on("error", () => {
@@ -107,4 +144,9 @@ export async function transcribe(wav: Buffer): Promise<string> {
   );
 
   return cleanTranscript(stdout);
+}
+
+/** O executável está no lugar? Verificado no boot, não na primeira ditação. */
+export function isWhisperInstalled(): boolean {
+  return existsSync(WHISPER_BIN);
 }

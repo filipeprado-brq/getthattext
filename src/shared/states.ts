@@ -17,6 +17,7 @@ export type State =
   | "done"
   | "raw"
   | "unguarded"
+  | "interrupted"
   | "empty"
   | "failed";
 
@@ -66,6 +67,16 @@ export const PRESENTATION: Record<State, Presentation> = {
   unguarded: {
     icon: "error",
     tooltip: "copiado — o portão de fala não rodou",
+    chime: true,
+    fades: true,
+    click: "start",
+  },
+  // O microfone caiu no meio. O texto ESTÁ no clipboard — a spec manda
+  // transcrever o que capturou e nunca descartar — mas com ressalva, porque
+  // o que você falou depois da queda não entrou.
+  interrupted: {
+    icon: "error",
+    tooltip: "copiado — o microfone caiu no meio da gravação",
     chime: true,
     fades: true,
     click: "start",

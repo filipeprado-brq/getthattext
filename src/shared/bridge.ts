@@ -24,8 +24,14 @@ export type Command = "start" | "stop" | "blip";
 export type Bridge = {
   /** Assina as ordens vindas do ícone da barra. */
   onCommand(handler: (command: Command) => void): void;
-  /** Entrega o WAV capturado; o main transcreve e devolve o texto. */
-  deliverAudio(bytes: ArrayBuffer): Promise<void>;
+  /**
+   * Entrega o WAV capturado; o main transcreve e devolve o texto.
+   *
+   * `interrupted` viaja JUNTO com o áudio de propósito. Como aviso separado,
+   * ele virava um sinalizador no main que dependia da ordem entre dois IPCs
+   * — e um sinalizador que ficasse quente contaminaria a ditação seguinte.
+   */
+  deliverAudio(bytes: ArrayBuffer, interrupted: boolean): Promise<void>;
   /** Avisa o main que a captura começou de fato — o primeiro frame chegou. */
   reportAudioFlowing(): void;
   /** Avisa o main que não havia nada para transcrever. */

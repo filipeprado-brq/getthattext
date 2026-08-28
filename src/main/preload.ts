@@ -14,7 +14,8 @@ const bridge: Bridge = {
   onCommand: (handler) => {
     ipcRenderer.on("command", (_event, command: Command) => handler(command));
   },
-  deliverAudio: (bytes) => ipcRenderer.invoke("deliver-audio", bytes),
+  deliverAudio: (bytes, interrupted) =>
+    ipcRenderer.invoke("deliver-audio", bytes, interrupted),
   reportAudioFlowing: () => ipcRenderer.send("audio-flowing"),
   reportEmpty: () => ipcRenderer.send("capture-empty"),
   reportFailure: (reason) => ipcRenderer.send("capture-failed", reason),

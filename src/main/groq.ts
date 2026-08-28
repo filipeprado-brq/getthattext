@@ -37,10 +37,25 @@ const TEMPERATURE = 0.3;
  */
 const MAX_COMPLETION_TOKENS = 800;
 
+/**
+ * Por que a reescrita não aconteceu.
+ *
+ * Código, não a frase. A abertura das preferências depende de reconhecer a
+ * chave recusada, e comparar a mensagem em português faria editar o texto
+ * quebrar o comportamento em silêncio.
+ */
+export type RawReason =
+  | "no-key"
+  | "unreadable-key"
+  | "rejected-key"
+  | "no-answer"
+  | "empty-answer"
+  | "truncated";
+
 /** O que aconteceu com a tentativa de reescrever a transcrição. */
 export type Rewritten =
   | { kind: "rewritten"; text: string }
-  | { kind: "raw"; why: string };
+  | { kind: "raw"; reason: RawReason; why: string };
 
 /** A chave que o Groq recusou — a única falha que exige ação sua. */
 function isInvalidApiKey(error: unknown): boolean {
@@ -93,11 +108,13 @@ export async function rewrite(
   // Bater no teto significa frase cortada no meio — o prompt proíbe até
   // COMPLETAR uma frase incompleta, então entregar uma é pior que o cru.
   if (finishReason === "length") {
-    return { kind: "raw", why: "a reescrita bateu no teto de tokens" };
+    return { kind: "raw", reason: "truncated", why: "a reescrita bateu no teto de tokens" };
   }
 
   const text = cleanRewrite(answer);
-  if (text.length === 0) return { kind: "raw", why: "o Groq devolveu vazio" };
+  if (text.length === 0) {
+    return { kind: "raw", reason: "empty-answer", why: "o Groq devolveu vazio" };
+  }
 
   return { kind: "rewritten", text };
 }
@@ -121,11 +138,13 @@ export async function rewriteOrRaw(
     apiKey = await loadApiKey();
   } catch (error) {
     console.error("não foi possível ler a chave do Groq:", describe(error));
-    return { kind: "raw", why: "chave ilegível" };
+    return { kind: "raw", reason: "unreadable-key", why: "chave ilegível" };
   }
 
   // Sem chave não é falha: é o modo cru, e ele não bloqueia nada.
-  if (apiKey === undefined) return { kind: "raw", why: "sem chave configurada" };
+  if (apiKey === undefined) {
+    return { kind: "raw", reason: "no-key", why: "sem chave configurada" };
+  }
 
   try {
     return await rewrite(transcript, apiKey, entries);
@@ -135,11 +154,11 @@ export async function rewriteOrRaw(
       await clearApiKey().catch((failure) =>
         console.error("falha ao apagar a chave:", describe(failure)),
       );
-      return { kind: "raw", why: "chave recusada pelo Groq" };
+      return { kind: "raw", reason: "rejected-key", why: "chave recusada pelo Groq" };
     }
 
     console.error("reescrita falhou:", describe(error));
-    return { kind: "raw", why: "o Groq não respondeu" };
+    return { kind: "raw", reason: "no-answer", why: "o Groq não respondeu" };
   }
 }
 

@@ -39,11 +39,25 @@ describe("PRESENTATION", () => {
     }
   });
 
-  it("o som toca só onde há texto novo no clipboard", () => {
-    // "Vazio" volta a ocioso em silêncio, e um som de sucesso numa falha
-    // ensinaria a ignorar o som.
-    const chiming = STATES.filter((s) => PRESENTATION[s].chime);
-    expect(chiming.sort()).toEqual(["done", "raw", "unguarded"]);
+  it("o som toca em TODO estado que põe texto no clipboard, e só neles", () => {
+    // A regra é essa, não a lista: "vazio" volta a ocioso em silêncio, e um
+    // som de sucesso numa falha ensinaria a ignorar o som. Os quatro que
+    // tocam entregaram texto — dois deles com ressalva, mas entregaram.
+    const chiming = STATES.filter((s) => PRESENTATION[s].chime).sort();
+    expect(chiming).toEqual(["done", "interrupted", "raw", "unguarded"]);
+
+    for (const silent of ["idle", "opening", "recording", "processing", "empty", "failed"] as const) {
+      expect(PRESENTATION[silent].chime).toBeUndefined();
+    }
+  });
+
+  it("o microfone caindo no meio não descarta e não some sozinho do radar", () => {
+    // A §10 manda transcrever o que capturou, nunca descartar, e mostrar
+    // variante de erro no ícone. O texto está no clipboard — por isso toca
+    // o som — mas falta o que veio depois da queda.
+    expect(PRESENTATION.interrupted.icon).toBe("error");
+    expect(PRESENTATION.interrupted.chime).toBe(true);
+    expect(PRESENTATION.interrupted.click).toBe("start");
   });
 
   it("nenhum estado de resultado usa o mesmo ícone de outro com sentido diferente", () => {

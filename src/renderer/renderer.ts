@@ -28,6 +28,8 @@ type Recording = {
   chunks: Float32Array[];
   maxDurationTimer: ReturnType<typeof setTimeout>;
   flowing: boolean;
+  /** O microfone sumiu no meio — fone desconectado, device trocado. */
+  interrupted: boolean;
 };
 
 let graph: AudioGraph | undefined;
@@ -111,13 +113,46 @@ async function startRecording(): Promise<void> {
   source.connect(graph.captureNode);
   await graph.context.resume();
 
-  recording = {
+  const started: Recording = {
     stream,
     source,
     chunks: [],
     flowing: false,
-    maxDurationTimer: setTimeout(() => void stopRecording(), MAX_DURATION_MS),
+    interrupted: false,
+    maxDurationTimer: setTimeout(
+      () =>
+        void stopRecording().catch((error) =>
+          window.bridge.reportFailure(`falha ao encerrar a gravação: ${String(error)}`),
+        ),
+      MAX_DURATION_MS,
+    ),
   };
+  recording = started;
+
+  // O device sumindo no meio — fone desconectado, dock removido, entrada
+  // trocada — encerra a trilha. Parar na hora e entregar o que já foi
+  // capturado: a spec (seção 10) manda transcrever o que capturou e NUNCA
+  // descartar. Esperar o clique de parar gravaria silêncio até você
+  // perceber, e aí o portão de fala descartaria a ditação inteira.
+  //
+  // O listener guarda a gravação a que pertence, em vez de ler a variável de
+  // módulo: sem isso, uma trilha de uma gravação já encerrada marcaria a
+  // gravação SEGUINTE como interrompida.
+  for (const track of stream.getAudioTracks()) {
+    track.addEventListener(
+      "ended",
+      () => {
+        if (recording !== started) return;
+
+        started.interrupted = true;
+        void stopRecording().catch((error) =>
+          window.bridge.reportFailure(`falha ao encerrar a gravação: ${String(error)}`),
+        );
+      },
+      { once: true },
+    );
+  }
+
   busy = false;
 }
 
@@ -145,7 +180,15 @@ async function stopRecording(): Promise<void> {
 
   if (chunks.length === 0) {
     busy = false;
-    window.bridge.reportEmpty();
+    // Interrompido sem NENHUM áudio é falha, não "nada foi ouvido": você
+    // falou e o microfone morreu antes do primeiro quantum. Mostrar
+    // "nada foi ouvido" seria falhar em silêncio.
+    if (current.interrupted) {
+      window.bridge.reportFailure("o microfone caiu antes de capturar áudio");
+    } else {
+      window.bridge.reportEmpty();
+    }
+
     return;
   }
 
@@ -156,6 +199,7 @@ async function stopRecording(): Promise<void> {
         wav.byteOffset,
         wav.byteOffset + wav.byteLength,
       ) as ArrayBuffer,
+      current.interrupted,
     );
   } catch (error) {
     window.bridge.reportFailure(`falha ao entregar o áudio: ${String(error)}`);

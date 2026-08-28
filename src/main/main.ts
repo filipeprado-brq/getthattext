@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   ipcMain,
   Menu,
   Tray,
@@ -28,8 +29,10 @@ import {
 import { dictionary, saveDictionary } from "./dictionary";
 import { loginItem, setLoginItem } from "./loginItem";
 import {
+  discardModel,
   downloadModel,
   hasRoomForAll,
+  isModelIntact,
   isModelPresent,
   presentModels,
 } from "./models";
@@ -39,11 +42,18 @@ import {
   openMicrophoneSettings,
   requestMicrophone,
 } from "./onboarding";
+import { MISSING_BINARY_MESSAGE, recoveryFor } from "../shared/failures";
 import { bytesNeeded, formatBytes, MODELS } from "../shared/models";
 import { clearApiKey, hasApiKey, saveApiKey } from "./apiKey";
 import { rewriteOrRaw } from "./groq";
 import { preferences, updatePreferences } from "./preferences";
-import { availableModels, hasSpeech, transcribe } from "./whisper";
+import {
+  availableModels,
+  hasSpeech,
+  isWhisperInstalled,
+  transcribe,
+  WhisperFailure,
+} from "./whisper";
 
 /**
  * O nome do app, fixado ANTES de qualquer coisa tocar o `userData`.
@@ -106,7 +116,15 @@ const TERMINAL_MS = 2000;
 let terminalTimer: ReturnType<typeof setTimeout> | undefined;
 let elapsedTimer: ReturnType<typeof setInterval> | undefined;
 
-function setState(next: State): void {
+
+/**
+ * Aplica um estado, com um detalhe opcional no tooltip.
+ *
+ * O detalhe existe para as falhas: `failed` persiste até o clique, e sem ele
+ * a razão morreria no console. Passar o texto pelo tooltip a deixa
+ * alcançável sem um modal a cada erro.
+ */
+function setState(next: State, detail?: string): void {
   const { icon, tooltip, chime, fades } = PRESENTATION[next];
 
   state = next;
@@ -116,7 +134,7 @@ function setState(next: State): void {
 
   if (tray) {
     tray.setTitle("");
-    tray.setToolTip(`getthattext — ${tooltip}`);
+    tray.setToolTip(`getthattext — ${detail ?? tooltip}`);
     showIcon(tray, icon);
   }
 
@@ -472,64 +490,137 @@ ipcMain.handle("dictionary-save", (_event, entries: readonly Entry[]) =>
   saveDictionary(entries),
 );
 
-ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
-  setState("processing");
-  const wav = Buffer.from(bytes);
+/**
+ * O que fazer quando a transcrição falha.
+ *
+ * A tabela da seção 10 da spec, executada. O diagnóstico vem de OLHAR o
+ * modelo, não de ler o log: modelo ausente, corrompido e truncado produzem
+ * a mesma mensagem no whisper — medido.
+ *
+ * Nenhum caminho aqui toca o clipboard. O que estava lá continua lá: uma
+ * falha nunca pode deixar você em situação pior do que antes de ditar.
+ */
+async function recoverFrom(error: unknown): Promise<void> {
+  const kind = error instanceof WhisperFailure ? error.kind : "other";
 
-  try {
-    const verdict = await runSpeechGate(wav);
-    if (verdict === "silence") {
-      setState("empty");
-      return;
-    }
+  // O modelo EM USO, não o primeiro do catálogo. As preferências deixam
+  // escolher qualquer `.bin` da pasta, e diagnosticar o arquivo errado
+  // levaria a apagar 574 MB de um modelo que nem participou da falha.
+  const model = MODELS.find(({ file }) => file === preferences().model);
 
-    const transcript = await transcribe(wav);
-    // Vazio é resultado legítimo, não erro: o portão diz que houve fala, mas
-    // o Whisper pode não achar palavra nenhuma nela. Não sobrescrever a área
-    // de transferência com nada.
-    if (transcript.length === 0) {
-      setState("empty");
-      return;
-    }
+  // Só paga o SHA-256 de 574 MB quando a resposta pode mudar a ação: com o
+  // binário ausente, o modelo é irrelevante.
+  const health =
+    kind === "model-load" && model
+      ? {
+          present: isModelPresent(model),
+          intact: isModelPresent(model) ? await isModelIntact(model) : false,
+        }
+      : { present: false, intact: false };
 
-    // O dicionário vem ANTES do Groq. Na ordem contrária ele desfaria
-    // escolhas boas do LLM: o modelo reescreve a frase inteira, e trocar
-    // palavras depois quebraria a concordância que ele acabou de acertar.
-    const entries = dictionary();
-    const corrected = applyDictionary(transcript, entries);
-    lastDictation = { heard: transcript, corrected };
+  const recovery = recoveryFor(kind, health);
+  console.error(`transcrição falhou (${kind}):`, error);
+  console.error(`recuperação: ${recovery.action} — ${recovery.message}`);
 
-    // `undefined` = a reescrita está DESLIGADA nas preferências. É diferente
-    // de ter falhado: o cru é o resultado pedido, não uma degradação, e o
-    // ícone não pode acusar problema onde não há.
-    const rewritten = preferences().rewrite
-      ? await rewriteOrRaw(corrected, entries)
-      : undefined;
-    if (rewritten?.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
+  // A mensagem vai para o tooltip: `failed` persiste até o clique, então ela
+  // fica alcançável em vez de morrer no console.
+  setState("failed", recovery.message);
 
-    // "Cru" aqui significa "não passou pela IA". A substituição é
-    // determinística e offline: não há razão para perdê-la porque o Groq
-    // caiu.
-    clipboard.writeText(
-      rewritten?.kind === "rewritten" ? rewritten.text : corrected,
-    );
+  if (recovery.action === "reinstall") {
+    dialog.showErrorBox("getthattext não pode continuar", recovery.message);
+    app.quit();
 
-    // As duas degradações são independentes e podem acontecer juntas. O cru
-    // vence porque descreve o que está no clipboard agora, que é a decisão
-    // do próximo segundo — o ticket 12 promete que você sabe que recebeu o
-    // cru PELO ÍCONE. "Sem portão" é instalação quebrada: condição
-    // permanente, que se anuncia sozinha nas outras ditações.
-    if (rewritten?.kind === "raw") setState("raw");
-    else setState(verdict === "unavailable" ? "unguarded" : "done");
-  } catch (error) {
-    console.error("transcrição falhou:", error);
-    setState("failed");
+    return;
   }
-});
+
+  if (recovery.action === "discard-model" && model) {
+    await discardModel(model).catch((failure) =>
+      console.error("não foi possível apagar o modelo:", failure),
+    );
+  }
+
+  if (recovery.action === "discard-model" || recovery.action === "onboard") {
+    dialog.showErrorBox("Modelo de transcrição", recovery.message);
+    openOnboarding();
+  }
+}
+
+ipcMain.handle(
+  "deliver-audio",
+  async (_event, bytes: ArrayBuffer, interrupted: boolean) => {
+    setState("processing");
+    const wav = Buffer.from(bytes);
+
+    try {
+      const verdict = await runSpeechGate(wav);
+      if (verdict === "silence") {
+        setState("empty");
+        return;
+      }
+
+      const transcript = await transcribe(wav);
+      // Vazio é resultado legítimo, não erro: o portão diz que houve fala, mas
+      // o Whisper pode não achar palavra nenhuma nela. Não sobrescrever a área
+      // de transferência com nada.
+      if (transcript.length === 0) {
+        setState("empty");
+        return;
+      }
+
+      // O dicionário vem ANTES do Groq. Na ordem contrária ele desfaria
+      // escolhas boas do LLM: o modelo reescreve a frase inteira, e trocar
+      // palavras depois quebraria a concordância que ele acabou de acertar.
+      const entries = dictionary();
+      const corrected = applyDictionary(transcript, entries);
+      lastDictation = { heard: transcript, corrected };
+
+      // `undefined` = a reescrita está DESLIGADA nas preferências. É diferente
+      // de ter falhado: o cru é o resultado pedido, não uma degradação, e o
+      // ícone não pode acusar problema onde não há.
+      const rewritten = preferences().rewrite
+        ? await rewriteOrRaw(corrected, entries)
+        : undefined;
+      if (rewritten?.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
+
+      // "Cru" aqui significa "não passou pela IA". A substituição é
+      // determinística e offline: não há razão para perdê-la porque o Groq
+      // caiu.
+      clipboard.writeText(
+        rewritten?.kind === "rewritten" ? rewritten.text : corrected,
+      );
+
+      // Precedência entre ressalvas, da mais grave para a menos: falta
+      // conteúdo (o microfone caiu), o texto não passou pela IA, o portão não
+      // rodou. "Sem portão" fica por último porque é instalação quebrada —
+      // condição permanente, que se anuncia sozinha nas outras ditações.
+      if (interrupted) setState("interrupted");
+      else if (rewritten?.kind === "raw") setState("raw");
+      else setState(verdict === "unavailable" ? "unguarded" : "done");
+
+      // A única falha da tabela que exige ação sua. Depois de o texto estar no
+      // clipboard, de propósito: abrir uma janela antes arriscaria mandar a
+      // ditação para o `catch` com o texto ainda fora do clipboard.
+      if (rewritten?.kind === "raw" && rewritten.reason === "rejected-key") {
+        openPreferences();
+      }
+    } catch (error) {
+      await recoverFrom(error);
+    }
+  },
+);
 
 void app.whenReady().then(() => {
   // Sem ícone no Dock: é um app de barra de menu.
   app.dock?.hide();
+
+  // "Sem whisper não há produto; degradar seria fingir." Abrir e falhar em
+  // toda ditação seria pior que não abrir: você descobriria depois de falar.
+  if (!isWhisperInstalled()) {
+    dialog.showErrorBox("getthattext não pode abrir", MISSING_BINARY_MESSAGE);
+    app.quit();
+
+    return;
+  }
   createHiddenWindow();
   keepShortcutRegistered(toggle);
   createTray();
