@@ -9,6 +9,12 @@
  *
  * Custa chamadas de API. A chave é lida do arquivo de desenvolvimento e
  * nunca é impressa. Sem ela, o script diz que pulou em vez de passar calado.
+ *
+ * UMA RODADA POR CASO, e o modelo tem variância real mesmo com
+ * `temperature: 0.3` — medido ao escolher o prompt: a mesma entrada e o
+ * mesmo prompt deram 2/13 numa bateria e 0/10 noutra. Um `FALHOU` isolado
+ * aqui é esperado e NÃO significa regressão; rode de novo antes de concluir
+ * qualquer coisa. O que importa é o padrão ao longo de várias rodadas.
  */
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
