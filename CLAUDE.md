@@ -13,6 +13,11 @@ cada uma em `.scratch/getthattext/issues/`.
 Identificadores em inglês, prosa em português. Regras completas em
 `CODING_STANDARDS.md` — leia antes de escrever código neste repo.
 
+## Empacotamento
+
+Gerar o `.app` e distribuí-lo à mão está em `docs/packaging.md`, com o
+comando de assinatura ad-hoc e o que ela custa.
+
 ## Agent skills
 
 ### Issue tracker
