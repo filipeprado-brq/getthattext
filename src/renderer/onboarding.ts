@@ -38,6 +38,8 @@ type Wizard = {
   downloading: boolean;
   /** O recado do passo da chave, quando ele não é o padrão. */
   keyNote?: { text: string; tone: "ok" | "bad" | "" };
+  /** Por que o último download parou, para o passo dos modelos dizer. */
+  downloadFailure?: string;
 };
 
 const wizard: Wizard = { pane: "microphone", shortcutConfirmed: false, downloading: false };
@@ -251,6 +253,7 @@ function paint(): void {
     },
   });
 
+  el("models-note").textContent = wizard.downloadFailure ?? "";
   paintDownloads();
   paintProviders();
 
@@ -434,6 +437,7 @@ back.addEventListener("click", () => {
  */
 function download(): void {
   wizard.downloading = true;
+  wizard.downloadFailure = undefined;
   progress.clear();
   go("download");
 
@@ -446,8 +450,10 @@ function download(): void {
     })
     .catch((error: unknown) => {
       wizard.downloading = false;
+      // Volta para a escolha, que é de onde se tenta de novo: o botão já
+      // volta a dizer "Baixar", e o `.part` no disco retoma de onde parou.
+      wizard.downloadFailure = reason(error);
       go("models");
-      say(reason(error));
     });
 }
 

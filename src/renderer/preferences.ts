@@ -56,6 +56,8 @@ type Screen = {
   tab: TabId;
   /** Download em curso na aba Modelo: trava a escolha até terminar. */
   downloading: boolean;
+  /** Por que o último download parou. Some quando outro começa. */
+  downloadFailure?: string;
 };
 
 const screen: Screen = { tab: "dictation", downloading: false };
@@ -194,6 +196,11 @@ function paintModels(): void {
 
   if (screen.downloading) {
     note(modelNote, "Baixando. Dá para fechar a janela: retoma de onde parou.");
+  } else if (screen.downloadFailure) {
+    // A falha ocupa o rodapé do grupo, que quebra linha; o rodapé da janela
+    // tem uma linha só, ao lado do espaço em disco.
+    modelGet.textContent = "Tentar de novo";
+    note(modelNote, screen.downloadFailure, "bad");
   } else if (missing) {
     modelGet.textContent = `Baixar ${formatBytes(missing.bytes)}`;
     const inUse = TRANSCRIPTION_MODELS.find(({ file }) => file === running);
@@ -410,6 +417,7 @@ rewriteSwitch.addEventListener("click", () => {
 
 modelGet.addEventListener("click", () => {
   screen.downloading = true;
+  screen.downloadFailure = undefined;
   progress.clear();
   if (snapshot) render(snapshot);
   say("");
@@ -423,9 +431,8 @@ modelGet.addEventListener("click", () => {
     })
     .catch((error: unknown) => {
       screen.downloading = false;
+      screen.downloadFailure = reason(error);
       if (snapshot) render(snapshot);
-      status.className = "bad";
-      say(reason(error));
     });
 });
 

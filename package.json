@@ -12,6 +12,7 @@
     "start": "npm run build && electron .",
     "verify:speech-gate": "electron scripts/verify-speech-gate.js",
     "verify:rewrite": "node scripts/verify-rewrite.mjs",
+    "verify:download-retry": "npm run build && electron scripts/verify-download-retry.js",
     "key:import": "electron scripts/import-groq-key.js",
     "build:icons": "electron scripts/build-tray-icons.js",
     "verify:blip": "electron scripts/verify-blip.js",

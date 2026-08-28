@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ModelProgress } from "../shared/bridge";
+import { reason } from "../shared/errors";
+import { isNetworkFailure, networkFailureMessage } from "../shared/network";
 import {
   bytesNeeded,
   type Model,
@@ -216,6 +218,31 @@ async function attemptDownload(
  * corrompido costuma ser acidente de rede, e mandar a pessoa clicar de novo
  * depois de dez minutos de espera é fazê-la pagar pelo acidente.
  */
+/**
+ * Quantas vezes insistir quando a CONEXÃO falha.
+ *
+ * Três, com pausa entre elas. Cada tentativa resolve o DNS de novo e
+ * costuma cair em outro nó de borda — foi assim que um download morreu num
+ * IPv6 do CloudFront enquanto o mesmo host respondia em 60 ms.
+ *
+ * A pausa cresce para não martelar um servidor que está de fato fora, e o
+ * `.part` no disco faz cada tentativa continuar de onde a anterior parou:
+ * insistir custa segundos, não megabytes.
+ */
+const NETWORK_ATTEMPTS = 3;
+const PAUSE_MS = [1_000, 3_000];
+
+const pause = (ms: number): Promise<void> =>
+  new Promise((done) => setTimeout(done, ms));
+
+/**
+ * Baixa um modelo, insistindo no que vale a pena insistir.
+ *
+ * Duas falhas diferentes, dois tratamentos: hash errado significa arquivo
+ * corrompido e a segunda tentativa recomeça do zero; conexão que não
+ * aconteceu significa rede, e aí a tentativa seguinte RETOMA — só o hash
+ * justifica jogar fora o que já veio.
+ */
 export async function downloadModel(
   model: Model,
   onProgress: (progress: Omit<ModelProgress, "file">) => void,
@@ -223,13 +250,33 @@ export async function downloadModel(
 ): Promise<void> {
   await mkdir(modelsDir(), { recursive: true });
 
-  if (await attemptDownload(model, onProgress, signal)) return;
-  if (await attemptDownload(model, onProgress, signal)) return;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      if (await attemptDownload(model, onProgress, signal)) return;
+      if (await attemptDownload(model, onProgress, signal)) return;
 
-  throw new Error(
-    `${model.label}: o arquivo baixado não confere com o publicado, duas vezes. ` +
-      "Pode ser a rede ou o espelho do servidor.",
-  );
+      throw new Error(
+        `${model.label}: o arquivo baixado não confere com o publicado, duas vezes. ` +
+          "Pode ser a rede ou o espelho do servidor.",
+      );
+    } catch (error) {
+      if (!isNetworkFailure(error) || attempt >= NETWORK_ATTEMPTS) {
+        if (isNetworkFailure(error)) {
+          // A mensagem do `fetch` — "fetch failed" — não diz nada a quem
+          // está olhando a tela, e o `cause` fala de undici.
+          console.error(`${model.file}: ${reason(error)}`);
+          throw new Error(networkFailureMessage(new URL(model.url).host));
+        }
+
+        throw error;
+      }
+
+      console.error(
+        `${model.file}: tentativa ${attempt} falhou na conexão, repetindo — ${reason(error)}`,
+      );
+      await pause(PAUSE_MS[attempt - 1] ?? 3_000);
+    }
+  }
 }
 
 /** Apaga um modelo corrompido, para a próxima tentativa começar limpa. */

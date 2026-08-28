@@ -63,6 +63,12 @@ h1 {
   max-width: 50ch;
 }
 .aside:empty { display: none; }
+/*
+  A falha do download mora AQUI, não no rodapé: a frase tem duas linhas, e o
+  rodapé de altura fixa a espremeria ao lado dos botões. O passo dos modelos
+  tem espaço sobrando logo abaixo dos cards.
+*/
+.failure { color: var(--danger); max-width: 60ch; }
 
 /*
   `controls`, não `row`: o `editor.css` — que as três janelas carregam — já

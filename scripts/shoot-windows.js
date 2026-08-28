@@ -47,6 +47,15 @@ const WINDOWS = [
           document.querySelector(".bar-fill").style.width = "37%";
           document.querySelector(".download-head span").textContent = "213 MB de 574 MB";`,
       },
+      {
+        // A falha do download volta para a escolha e fala AQUI, não no
+        // rodapé: a frase tem duas linhas e o rodapé tem uma.
+        name: "models-falhou",
+        script: `${pane("models")};
+          document.getElementById("models-note").textContent =
+            "Não foi possível falar com huggingface.co. Verifique a conexão e clique em " +
+            "Baixar de novo — o que já veio fica no disco e o download continua de onde parou.";`,
+      },
       { name: "key", script: pane("key") },
       { name: "shortcut", script: pane("shortcut") },
     ],
@@ -64,6 +73,16 @@ const WINDOWS = [
         script: `${pane("model")};
           document.getElementById("choices").hidden = true;
           document.getElementById("downloads").hidden = false;`,
+      },
+      {
+        name: "model-falhou",
+        script: `${pane("model")};
+          const note = document.getElementById("model-note");
+          note.className = "note bad";
+          note.textContent =
+            "Não foi possível falar com huggingface.co. Verifique a conexão e clique em " +
+            "Baixar de novo — o que já veio fica no disco e o download continua de onde parou.";
+          document.getElementById("model-get").textContent = "Tentar de novo";`,
       },
       { name: "rewrite", script: pane("rewrite") },
       { name: "system", script: pane("system") },
