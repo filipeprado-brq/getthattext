@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { Preferences } from "../shared/preferences";
-import type { PreferencesBridge } from "../shared/bridge";
+import type { ModelProgress, PreferencesBridge } from "../shared/bridge";
 
 /**
  * Superfície da tela de preferências.
@@ -15,6 +15,13 @@ const bridge: PreferencesBridge = {
   save: (patch: Partial<Preferences>) => ipcRenderer.invoke("preferences-save", patch),
   setLoginItem: (enabled: boolean) => ipcRenderer.invoke("preferences-login-item", enabled),
   setApiKey: (key: string) => ipcRenderer.invoke("preferences-api-key", key),
+  testApiKey: (key: string) => ipcRenderer.invoke("preferences-test-api-key", key),
+  downloadModels: () => ipcRenderer.invoke("preferences-download"),
+  onProgress: (handler) => {
+    ipcRenderer.on("models-progress", (_event, progress: ModelProgress) => handler(progress));
+  },
+  openDictionary: () => ipcRenderer.send("preferences-open-dictionary"),
+  openOnboarding: () => ipcRenderer.send("preferences-open-onboarding"),
   testShortcut: () => ipcRenderer.invoke("preferences-test-shortcut"),
 };
 

@@ -29,13 +29,31 @@ const WINDOWS = [
     // As telas do wizard, incluindo a de download, que só aparece baixando.
     panes: ["microphone", "models", "download", "key", "shortcut"],
   },
+  {
+    name: "preferences",
+    file: "dist/renderer/preferences.html",
+    width: 640,
+    height: 412,
+    panes: ["dictation", "model", "rewrite", "system"],
+  },
 ];
 
-/** Deixa uma tela do wizard visível, sem passar pelo fluxo que a abriria. */
+/**
+ * Deixa uma tela visível, sem passar pelo fluxo que a abriria.
+ *
+ * As duas janelas empilham telas no mesmo lugar com nomes próprios — o
+ * wizard chama de `pane`, as preferências de `panel` —, então a troca aqui
+ * aceita as duas.
+ */
 function showPane(id) {
   return `(() => {
-    for (const pane of document.querySelectorAll(".pane")) pane.classList.remove("active");
-    document.getElementById("pane-${id}").classList.add("active");
+    const kind = document.getElementById("pane-${id}") ? "pane" : "panel";
+    const target = document.getElementById(kind + "-${id}");
+    if (!target) throw new Error("tela inexistente: ${id}");
+
+    for (const other of document.querySelectorAll("." + kind)) other.classList.remove("active");
+    target.classList.add("active");
+
     if ("${id}" === "download") {
       const fill = document.querySelector(".bar-fill");
       const amount = document.querySelector(".download-head span");
@@ -45,6 +63,10 @@ function showPane(id) {
     return document.body.scrollHeight <= window.innerHeight;
   })()`;
 }
+
+// Sem isto o app SAI ao fechar a última janela — o Electron encerra por
+// padrão — e a janela seguinte nunca chega a ser fotografada, em silêncio.
+app.on("window-all-closed", () => {});
 
 app.whenReady().then(async () => {
   mkdirSync(OUT, { recursive: true });
@@ -77,7 +99,10 @@ app.whenReady().then(async () => {
       console.log(`${fits ? "ok  " : "ROLA"} ${path}`);
     }
 
-    win.destroy();
+    // Fechar e esperar um tique: destruir a última janela e criar a próxima
+    // no mesmo tique faz o `loadFile` seguinte falhar com ERR_FAILED.
+    win.close();
+    await new Promise((done) => setTimeout(done, 200));
   }
 
   if (overflowed) console.error("alguma tela passou da altura da janela");

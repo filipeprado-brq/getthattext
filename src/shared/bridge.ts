@@ -102,6 +102,20 @@ export type PreferencesBridge = {
   setLoginItem(enabled: boolean): Promise<LoginItemState>;
   /** Grava a chave, ou apaga se vier vazia. Devolve se passou a existir. */
   setApiKey(key: string): Promise<boolean>;
+  /** Pergunta ao provedor se a chave responde. Vazia testa a guardada. */
+  testApiKey(key: string): Promise<KeyCheck>;
+  /**
+   * Baixa o que falta para o modelo escolhido, aqui mesmo.
+   *
+   * A troca de modelo deixou de reabrir o onboarding: quem escolhe outro
+   * decide QUANDO baixar, e a barra aparece dentro da aba.
+   */
+  downloadModels(): Promise<PreferencesSnapshot>;
+  onProgress(handler: (progress: ModelProgress) => void): void;
+  /** Abre o editor de dicionário — a aba Sistema é a porta visível dele. */
+  openDictionary(): void;
+  /** Reabre a primeira abertura, para refazer os passos. */
+  openOnboarding(): void;
   /** Espera você apertar o atalho. É a única verificação honesta que existe. */
   testShortcut(): Promise<ShortcutTest>;
 };

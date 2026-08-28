@@ -4,6 +4,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  type IpcMainInvokeEvent,
   Menu,
   Tray,
 } from "electron";
@@ -238,7 +239,10 @@ function createHiddenWindow(): void {
 function openWindow(
   key: "editor" | "preferences" | "onboarding",
   title: string,
-  size: { width: number; height: number },
+  // `fixed` é para as janelas cujo conteúdo tem altura definida: o wizard e
+  // as preferências foram desenhados para caber exatamente, e deixar
+  // encolher só produziria três cards espremidos e texto cortado.
+  size: { width: number; height: number; fixed?: boolean },
   onClosed?: () => void,
 ): void {
   const existing = windows[key];
@@ -251,9 +255,11 @@ function openWindow(
   }
 
   const created = new BrowserWindow({
-    ...size,
-    minWidth: 520,
-    minHeight: 380,
+    width: size.width,
+    height: size.height,
+    resizable: size.fixed !== true,
+    minWidth: size.fixed === true ? size.width : 520,
+    minHeight: size.fixed === true ? size.height : 380,
     title,
     show: false,
     webPreferences: {
@@ -280,12 +286,12 @@ const openDictionaryEditor = (): void =>
   openWindow("editor", "Dicionário", { width: 640, height: 620 });
 
 const openOnboarding = (): void =>
-  openWindow("onboarding", "Bem-vindo", { width: 680, height: 412 });
+  openWindow("onboarding", "Bem-vindo", { width: 680, height: 412, fixed: true });
 
 const openPreferences = (): void =>
   // Um teste de atalho armado não pode sobreviver à janela que o pediu: ele
   // engoliria a próxima ditação.
-  openWindow("preferences", "Preferências", { width: 560, height: 640 }, cancelShortcutTest);
+  openWindow("preferences", "Preferências", { width: 640, height: 412, fixed: true }, cancelShortcutTest);
 
 function createTray(): void {
   // O Tray exige uma imagem no construtor; `setState` troca pela do estado
@@ -444,7 +450,17 @@ ipcMain.handle("onboarding-choose-shortcut", (_event, accelerator: unknown) => {
  * Em série e não em paralelo: são 574 MB e 885 KB pela mesma conexão, e
  * dividir a banda faria a barra grande arrastar sem ninguém ganhar nada.
  */
-ipcMain.handle("onboarding-download", async (event) => {
+/**
+ * Baixa o que falta, um de cada vez.
+ *
+ * Em série e não em paralelo: são 574 MB e 885 KB pela mesma conexão, e
+ * dividir a banda faria a barra grande arrastar sem ninguém ganhar nada.
+ *
+ * Serve as DUAS janelas — a primeira abertura e a aba Modelo das
+ * preferências — porque baixar é a mesma coisa nos dois lugares. O que
+ * muda é só o retrato devolvido no fim.
+ */
+async function downloadMissingModels(event: IpcMainInvokeEvent): Promise<void> {
   const chosen = preferences().model;
   const needed = requiredModels(chosen);
   const present = presentModels();
@@ -474,7 +490,7 @@ ipcMain.handle("onboarding-download", async (event) => {
         model,
         ({ received, total }) => {
           if (event.sender.isDestroyed()) return;
-          event.sender.send("onboarding-progress", { file: model.file, received, total });
+          event.sender.send("models-progress", { file: model.file, received, total });
         },
         cancel.signal,
       );
@@ -487,8 +503,18 @@ ipcMain.handle("onboarding-download", async (event) => {
   // outros seria só ocupar espaço.
   const removed = await discardUnchosenModels(chosen);
   if (removed.length > 0) console.log(`modelos removidos: ${removed.join(", ")}`);
+}
+
+ipcMain.handle("onboarding-download", async (event) => {
+  await downloadMissingModels(event);
 
   return onboardingState();
+});
+
+ipcMain.handle("preferences-download", async (event) => {
+  await downloadMissingModels(event);
+
+  return snapshot();
 });
 
 ipcMain.on("onboarding-finish", () => windows.onboarding?.close());
@@ -503,15 +529,9 @@ ipcMain.handle("preferences-save", (_event, patch: Partial<Preferences>) => {
   // mostraria o novo e o teclado continuaria no antigo.
   if (saved.shortcut !== before.shortcut) reapplyShortcut();
 
-  // Trocar para um modelo que não está no disco abre o onboarding na hora.
-  // Sem isto a troca ficaria passiva: o download só aconteceria quando você
-  // tentasse ditar e o portão de prontidão reabrisse a janela, o que parece
-  // que a escolha não fez nada.
-  const chosen = requiredModels(saved.model)[0];
-  if (saved.model !== before.model && chosen && !isModelPresent(chosen)) {
-    openOnboarding();
-  }
-
+  // Escolher um modelo ausente NÃO abre mais o onboarding: a aba Modelo
+  // mostra o que falta e baixa ali mesmo, quando você quiser. Até lá,
+  // `activeModel` mantém a ditação rodando com o que está no disco.
   return snapshot();
 });
 
@@ -551,6 +571,11 @@ ipcMain.handle("preferences-test-api-key", async (_event, key: unknown): Promise
 });
 
 ipcMain.handle("preferences-test-shortcut", () => armShortcutTest());
+
+// A aba Sistema é a única porta visível para as outras duas janelas: o
+// dicionário e o onboarding só abriam pelo menu da bandeja.
+ipcMain.on("preferences-open-dictionary", openDictionaryEditor);
+ipcMain.on("preferences-open-onboarding", openOnboarding);
 
 ipcMain.handle("dictionary-load", () => ({
   entries: dictionary(),

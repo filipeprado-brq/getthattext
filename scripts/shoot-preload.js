@@ -31,6 +31,35 @@ const state = {
 
 const pending = () => new Promise(() => {});
 
+const snapshot = {
+  preferences: {
+    sound: true,
+    rewrite: true,
+    shortcut: "Alt+Command+G",
+    language: "pt",
+    model: "ggml-small-q5_1.bin",
+    provider: "groq",
+  },
+  // O escolhido NÃO está no disco: é o estado que a aba Modelo precisa
+  // mostrar — falta baixar, e o que está lá continua transcrevendo.
+  models: ["ggml-large-v3-turbo-q5_0.bin"],
+  loginItem: { status: "not-registered" },
+  hasApiKey: true,
+};
+
+contextBridge.exposeInMainWorld("preferencesBridge", {
+  load: async () => snapshot,
+  save: async () => snapshot,
+  setLoginItem: async () => snapshot.loginItem,
+  setApiKey: async () => true,
+  testApiKey: async () => ({ kind: "ok" }),
+  downloadModels: pending,
+  onProgress: () => {},
+  openDictionary: () => {},
+  openOnboarding: () => {},
+  testShortcut: pending,
+});
+
 contextBridge.exposeInMainWorld("onboardingBridge", {
   load: async () => state,
   requestMicrophone: async () => ({ ...state, microphone: "granted" }),

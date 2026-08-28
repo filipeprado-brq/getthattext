@@ -9,67 +9,137 @@
     <link rel="stylesheet" href="./preferences.css" />
   </head>
   <body>
-    <section>
-      <h1>Ditado</h1>
+    <!--
+      Quatro abas no lugar de uma rolagem só. Cada aba cabe inteira na
+      janela: nada fica abaixo da dobra, e a janela para de mudar de altura
+      conforme o recado que aparece.
 
-      <div class="pref">
-        <label for="shortcut">Atalho</label>
-        <div class="control">
-          <output id="shortcut" class="chord"></output>
-          <button id="record" type="button">Trocar</button>
-          <button id="test" type="button">Testar</button>
+      As linhas são agrupadas com o rótulo à ESQUERDA e o controle à
+      direita, como o macOS de hoje. A coluna de rótulos alinhados à direita
+      obrigava o olho a voltar a cada linha.
+    -->
+    <nav id="tabs" role="tablist" aria-label="seções das preferências"></nav>
+
+    <main>
+      <section id="panel-dictation" class="panel">
+        <p class="group-title">Como começar a ditar</p>
+        <div class="group">
+          <div class="setting">
+            <div class="setting-label">Atalho</div>
+            <div class="setting-control">
+              <output id="shortcut" class="chord"></output>
+              <button id="record" type="button">Trocar</button>
+              <button id="test" type="button">Testar</button>
+            </div>
+          </div>
+          <p class="note" id="shortcut-note"></p>
+
+          <div class="setting">
+            <label class="setting-label" for="language">Idioma da fala</label>
+            <div class="setting-control"><select id="language"></select></div>
+          </div>
+
+          <div class="setting">
+            <div class="setting-label">
+              Som ao terminar
+              <small>Um blip curto quando o texto chega à área de transferência.</small>
+            </div>
+            <div class="setting-control">
+              <button id="sound" type="button" class="switch" role="switch" aria-label="som ao terminar">
+                <i></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <p class="note" id="shortcut-note"></p>
-      </div>
+      </section>
 
-      <div class="pref">
-        <label for="language">Idioma</label>
-        <div class="control"><select id="language"></select></div>
-      </div>
-
-      <div class="pref">
-        <label>Modelo</label>
-        <div id="choices" role="radiogroup" aria-label="modelo de transcrição"></div>
-        <p class="note" id="model-note"></p>
-      </div>
-    </section>
-
-    <section>
-      <h1>Depois de transcrever</h1>
-
-      <div class="pref">
-        <label for="rewrite">Reescrever com IA</label>
-        <div class="control">
-          <input id="rewrite" type="checkbox" />
-          <span class="inline">Desligue quando o texto não puder ser alterado.</span>
+      <section id="panel-model" class="panel">
+        <p class="group-title">Modelo de transcrição</p>
+        <div class="group">
+          <div class="group-body">
+            <div id="choices" class="choices" role="radiogroup" aria-label="modelo de transcrição"></div>
+            <div id="downloads" class="downloads" hidden></div>
+          </div>
+          <div class="group-foot">
+            <p class="note" id="model-note"></p>
+            <button id="model-get" type="button" hidden>Baixar</button>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div class="pref">
-        <label for="api-key">Chave do Groq</label>
-        <div class="control">
-          <input id="api-key" type="password" autocomplete="off" placeholder="gsk_…" />
-          <button id="save-key" type="button">Guardar</button>
+      <section id="panel-rewrite" class="panel">
+        <p class="group-title">Depois de transcrever</p>
+        <div class="group">
+          <div class="setting">
+            <div class="setting-label">
+              Reescrever com IA
+              <small>Desligue quando o texto não puder ser alterado.</small>
+            </div>
+            <div class="setting-control">
+              <button id="rewrite" type="button" class="switch" role="switch" aria-label="reescrever com IA">
+                <i></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting">
+            <label class="setting-label" for="provider">Provedor</label>
+            <div class="setting-control"><select id="provider"></select></div>
+          </div>
+
+          <div class="setting">
+            <label class="setting-label" for="api-key">Chave</label>
+            <div class="setting-control">
+              <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
+              <button id="key-check" type="button">Testar</button>
+              <button id="key-save" type="button">Ativar</button>
+            </div>
+          </div>
+          <p class="note" id="key-note"></p>
         </div>
-        <p class="note" id="key-note"></p>
-      </div>
+      </section>
 
-      <div class="pref">
-        <label for="sound">Som ao terminar</label>
-        <div class="control"><input id="sound" type="checkbox" /></div>
-      </div>
-    </section>
+      <section id="panel-system" class="panel">
+        <p class="group-title">Sistema</p>
+        <div class="group">
+          <div class="setting">
+            <div class="setting-label">Abrir no login</div>
+            <div class="setting-control">
+              <button id="login" type="button" class="switch" role="switch" aria-label="abrir no login">
+                <i></i>
+              </button>
+            </div>
+          </div>
+          <p class="note" id="login-note"></p>
 
-    <section>
-      <h1>Sistema</h1>
-      <div class="pref">
-        <label for="login">Abrir no login</label>
-        <div class="control"><input id="login" type="checkbox" /></div>
-        <p class="note" id="login-note"></p>
-      </div>
-    </section>
+          <div class="setting">
+            <div class="setting-label">
+              Dicionário de termos
+              <small>As palavras que a transcrição erra sempre, e como você as escreve.</small>
+            </div>
+            <div class="setting-control">
+              <button id="open-dictionary" type="button">Abrir…</button>
+            </div>
+          </div>
 
-    <p id="status" role="status"></p>
+          <div class="setting">
+            <div class="setting-label">
+              Refazer a primeira abertura
+              <small>Os quatro passos de novo: microfone, modelo, chave e atalho.</small>
+            </div>
+            <div class="setting-control">
+              <button id="open-onboarding" type="button">Abrir…</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p id="status" role="status"></p>
+      <span id="disk"></span>
+    </footer>
+
     <script type="module" src="./preferences.js"></script>
   </body>
 </html>

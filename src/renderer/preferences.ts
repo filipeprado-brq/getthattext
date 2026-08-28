@@ -1,104 +1,286 @@
-import type { PreferencesSnapshot } from "../shared/bridge.js";
+import type { KeyCheck, ModelProgress, PreferencesSnapshot } from "../shared/bridge.js";
 import { reason } from "../shared/errors.js";
-import { el, paintChoices } from "./dom.js";
-import { formatBytes, TRANSCRIPTION_MODELS } from "../shared/models.js";
+import {
+  activeModel,
+  formatBytes,
+  progressPercent,
+  TRANSCRIPTION_MODELS,
+  VAD_MODEL,
+} from "../shared/models.js";
 import { LANGUAGES } from "../shared/preferences.js";
-import { acceleratorFromChord, acceleratorToSymbols } from "../shared/shortcut.js";
+import { PROVIDERS, providerFor } from "../shared/providers.js";
+import { acceleratorToSymbols } from "../shared/shortcut.js";
+import { el, paintChoices, sayInto } from "./dom.js";
+import { recordShortcut } from "./shortcutField.js";
 
+/**
+ * As preferências, em quatro abas.
+ *
+ * Eram três seções numa rolagem só, com os rótulos alinhados à direita numa
+ * coluna de 150 px — o olho voltava a cada linha, e o que estava embaixo
+ * dependia de rolar. Cada aba agora cabe inteira na janela.
+ *
+ * A aba Modelo usa o MESMO card do onboarding, mais o que só ela precisa
+ * dizer: quem está no disco, e um download que pode esperar.
+ */
+type TabId = "dictation" | "model" | "rewrite" | "system";
+
+type Tab = { id: TabId; label: string; icon: string };
+
+const TABS: readonly Tab[] = [
+  {
+    id: "dictation",
+    label: "Ditado",
+    icon:
+      '<rect x="6" y="2" width="4" height="7.2" rx="2" stroke="currentColor" stroke-width="1.3"/>' +
+      '<path d="M3.8 7.2a4.2 4.2 0 0 0 8.4 0M8 11.4V14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+  },
+  {
+    id: "model",
+    label: "Modelo",
+    icon:
+      '<path d="M8 1.8 14.2 5 8 8.2 1.8 5 8 1.8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
+      '<path d="M1.8 8.6 8 11.8l6.2-3.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  {
+    id: "rewrite",
+    label: "Reescrita",
+    icon:
+      '<path d="M4.2 2.4 5 4.6l2.2.8L5 6.2l-.8 2.2-.8-2.2L1.2 5.4 3.4 4.6l.8-2.2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>' +
+      '<path d="M10.6 6.6l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>',
+  },
+  {
+    id: "system",
+    label: "Sistema",
+    icon:
+      '<circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/>' +
+      '<path d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5l-1.3 1.3M4.8 11.2l-1.3 1.3M12.5 12.5l-1.3-1.3M4.8 4.8 3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+  },
+];
+
+type Screen = {
+  tab: TabId;
+  /** Download em curso na aba Modelo: trava a escolha até terminar. */
+  downloading: boolean;
+};
+
+const screen: Screen = { tab: "dictation", downloading: false };
+let snapshot: PreferencesSnapshot | undefined;
+
+/** O andamento de cada arquivo, para a barra não zerar entre redesenhos. */
+const progress = new Map<string, ModelProgress>();
+
+const tabs = el("tabs");
 const shortcutOutput = el("shortcut");
 const recordButton = el<HTMLButtonElement>("record");
 const shortcutNote = el("shortcut-note");
 const testButton = el<HTMLButtonElement>("test");
 const languageSelect = el<HTMLSelectElement>("language");
+const soundSwitch = el<HTMLButtonElement>("sound");
 const choices = el("choices");
+const downloads = el("downloads");
 const modelNote = el("model-note");
-const rewriteBox = el<HTMLInputElement>("rewrite");
-const soundBox = el<HTMLInputElement>("sound");
+const modelGet = el<HTMLButtonElement>("model-get");
+const rewriteSwitch = el<HTMLButtonElement>("rewrite");
+const providerSelect = el<HTMLSelectElement>("provider");
 const apiKeyInput = el<HTMLInputElement>("api-key");
+const keyCheckButton = el<HTMLButtonElement>("key-check");
+const keySaveButton = el<HTMLButtonElement>("key-save");
 const keyNote = el("key-note");
-const loginBox = el<HTMLInputElement>("login");
+const loginSwitch = el<HTMLButtonElement>("login");
 const loginNote = el("login-note");
 const status = el("status");
+const disk = el("disk");
+const say = sayInto(status);
 
-/** O ATALHO em vigor, para os recados não dependerem do DOM. */
+/** O atalho EM VIGOR, para os recados não dependerem do DOM. */
 let activeShortcut = "";
 
-function say(message: string): void {
-  status.textContent = message;
+function note(target: HTMLElement, text: string, kind: "warn" | "bad" | "good" | "" = ""): void {
+  target.textContent = text;
+  target.className = kind.length > 0 ? `note ${kind}` : "note";
 }
 
-function note(target: HTMLElement, text: string, kind: "warn" | "good" | "" = ""): void {
-  target.textContent = text;
-  target.className = `note${kind ? ` ${kind}` : ""}`;
+function toggle(control: HTMLButtonElement, on: boolean): void {
+  control.setAttribute("aria-checked", String(on));
 }
 
 /** Grava e redesenha. Falha de gravação é dita, nunca engolida. */
-async function save(patch: Parameters<typeof window.preferencesBridge.save>[0]) {
+async function save(patch: Parameters<typeof window.preferencesBridge.save>[0]): Promise<void> {
   try {
     render(await window.preferencesBridge.save(patch));
-    say("");
+    status.className = "";
+    say("Gravado.");
   } catch (error) {
+    status.className = "bad";
     say(`Não foi possível gravar: ${reason(error)}`);
   }
 }
 
-function render(snapshot: PreferencesSnapshot): void {
-  const { preferences, models, loginItem, hasApiKey } = snapshot;
+/* ---------- desenho ---------- */
 
-  activeShortcut = preferences.shortcut;
-  shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
-  showShortcutNote(activeShortcut);
+function paintTabs(): void {
+  tabs.replaceChildren(
+    ...TABS.map((tab) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tab";
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(tab.id === screen.tab));
+      button.innerHTML =
+        `<svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true">${tab.icon}</svg>` +
+        `<span>${tab.label}</span>`;
+      button.addEventListener("click", () => {
+        screen.tab = tab.id;
+        if (snapshot) render(snapshot);
+      });
 
-  languageSelect.replaceChildren(
-    ...LANGUAGES.map(({ code, label }) => new Option(label, code, false, code === preferences.language)),
+      return button;
+    }),
   );
 
-  paintChoices(choices, {
-    models: TRANSCRIPTION_MODELS,
-    chosen: preferences.model,
-    present: models,
-    format: formatBytes,
-    onPick: (file) => void save({ model: file }),
-  });
-  note(
-    modelNote,
-    models.includes(preferences.model)
-      ? ""
-      : "O modelo escolhido ainda não está no disco — a janela de download abre "
-        + "ao escolher.",
-    models.includes(preferences.model) ? "" : "warn",
+  for (const tab of TABS) {
+    el(`panel-${tab.id}`).classList.toggle("active", tab.id === screen.tab);
+  }
+}
+
+/** A lista do download, igual à do onboarding: um arquivo por linha. */
+function paintDownloads(): void {
+  if (!snapshot) return;
+
+  const chosen = TRANSCRIPTION_MODELS.find(({ file }) => file === snapshot?.preferences.model);
+  const files = [chosen, VAD_MODEL].filter((model) => model !== undefined);
+
+  downloads.replaceChildren(
+    ...files.map((model) => {
+      const seen = progress.get(model.file);
+      const received = seen?.received ?? 0;
+      const percent = progressPercent(received, seen?.total ?? model.bytes);
+
+      const item = document.createElement("div");
+      item.className = percent === 100 ? "download done" : "download";
+
+      const icon = document.createElement("div");
+      icon.className = "download-icon";
+
+      const head = document.createElement("div");
+      head.className = "download-head";
+      head.append(document.createTextNode("name" in model ? `Modelo ${model.name}` : model.label));
+
+      const amount = document.createElement("span");
+      amount.textContent =
+        percent === 100 ? "pronto" : `${formatBytes(received)} de ${formatBytes(model.bytes)}`;
+      head.append(amount);
+
+      const body = document.createElement("div");
+      const file = document.createElement("div");
+      file.className = "download-file";
+      file.textContent = model.file;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.width = `${percent}%`;
+      track.append(fill);
+      body.append(file, track);
+
+      item.append(icon, head, body);
+
+      return item;
+    }),
   );
-
-  rewriteBox.checked = preferences.rewrite;
-  soundBox.checked = preferences.sound;
-
-  apiKeyInput.value = "";
-  apiKeyInput.placeholder = hasApiKey ? "•••••••• (guardada)" : "gsk_…";
-  note(
-    keyNote,
-    hasApiKey
-      ? "Guardada no Keychain. Deixe em branco e clique em Guardar para apagar."
-      : "Sem chave, o texto vai cru para a área de transferência — o app não bloqueia.",
-  );
-
-  showLoginState(loginItem);
 }
 
 /**
- * O recado padrão do atalho: PERMANENTE e preventivo.
+ * A aba do modelo: os cards, o que falta e quanto ocupa.
  *
- * Um atalho global do macOS tem precedência sobre atalho de menu de
- * aplicativo, então a combinação escolhida deixa de funcionar nos outros
- * programas enquanto o app estiver aberto. O sistema não avisa disso, e o
- * `register` aceita qualquer coisa — medido. Dizer só depois de um teste que
- * falhou seria tarde e fala da direção oposta.
+ * Escolher um ausente NÃO sequestra a janela — antes isso reabria o
+ * onboarding na hora. O card fica marcado, o rodapé diz o que falta, e o
+ * download espera o botão. Até lá `activeModel` mantém a ditação rodando
+ * com o que está no disco, e o rodapé diz qual é.
  */
-function showShortcutNote(accelerator: string): void {
+function paintModels(): void {
+  if (!snapshot) return;
+
+  const { preferences, models } = snapshot;
+  const chosen = preferences.model;
+  const running = activeModel(chosen, models);
+  const missing = TRANSCRIPTION_MODELS.find(({ file }) => file === chosen && !models.includes(file));
+
+  paintChoices(choices, {
+    models: TRANSCRIPTION_MODELS,
+    chosen,
+    present: models,
+    format: formatBytes,
+    onPick: (file) => {
+      if (screen.downloading) return;
+      void save({ model: file });
+    },
+  });
+
+  // Enquanto baixa, a lista de arquivos ocupa o lugar dos cards: a escolha
+  // está congelada até terminar, e três cards clicáveis ali seriam mentira
+  // — além de não caberem junto com as barras.
+  downloads.hidden = !screen.downloading;
+  choices.hidden = screen.downloading;
+  modelGet.hidden = missing === undefined || screen.downloading;
+  modelGet.disabled = screen.downloading;
+
+  if (screen.downloading) {
+    note(modelNote, "Baixando. Dá para fechar a janela: retoma de onde parou.");
+  } else if (missing) {
+    modelGet.textContent = `Baixar ${formatBytes(missing.bytes)}`;
+    const inUse = TRANSCRIPTION_MODELS.find(({ file }) => file === running);
+    note(
+      modelNote,
+      inUse
+        ? `Falta baixar ${formatBytes(missing.bytes)}. Até lá, o ${inUse.name} continua transcrevendo.`
+        : `Falta baixar ${formatBytes(missing.bytes)}.`,
+      "warn",
+    );
+  } else {
+    note(
+      modelNote,
+      "Ao trocar, o modelo que sai de uso é apagado assim que o novo estiver íntegro no disco.",
+    );
+  }
+
+  const onDisk = TRANSCRIPTION_MODELS.filter(({ file }) => models.includes(file)).reduce(
+    (total, model) => total + model.bytes,
+    0,
+  );
+  disk.textContent = `${formatBytes(onDisk)} em disco`;
+}
+
+function paintRewrite(): void {
+  if (!snapshot) return;
+
+  const { preferences, hasApiKey } = snapshot;
+  const chosen = providerFor(preferences.provider);
+
+  toggle(rewriteSwitch, preferences.rewrite);
+
+  providerSelect.replaceChildren(
+    ...PROVIDERS.map((provider) => {
+      const option = new Option(
+        provider.available ? `${provider.name} · ${provider.model}` : `${provider.name} — em breve`,
+        provider.id,
+        false,
+        provider.id === chosen.id,
+      );
+      option.disabled = !provider.available;
+
+      return option;
+    }),
+  );
+
+  apiKeyInput.placeholder = hasApiKey ? "•••••••• (guardada)" : `${chosen.keyPrefix}…`;
   note(
-    shortcutNote,
-    `Aparece como ${acceleratorToSymbols(accelerator)}. Um atalho global tem ` +
-      "precedência sobre os atalhos dos aplicativos: esta combinação deixa de " +
-      "funcionar nos outros programas enquanto o getthattext estiver aberto.",
+    keyNote,
+    hasApiKey
+      ? "Guardada no Keychain. Deixe em branco e clique em Ativar para apagar."
+      : `Sem chave o texto vai cru para a área de transferência. A do ${chosen.name} sai em ${chosen.keyUrl}.`,
   );
 }
 
@@ -109,8 +291,8 @@ function showShortcutNote(accelerator: string): void {
  * cair calado ali seria falhar em silêncio no mesmo controle que existe
  * para não mentir.
  */
-function showLoginState(state: PreferencesSnapshot["loginItem"]): void {
-  loginBox.checked = state.status === "enabled" || state.status === "requires-approval";
+function paintLogin(state: PreferencesSnapshot["loginItem"]): void {
+  toggle(loginSwitch, state.status === "enabled" || state.status === "requires-approval");
 
   if (state.status === "requires-approval") {
     note(
@@ -137,66 +319,77 @@ function showLoginState(state: PreferencesSnapshot["loginItem"]): void {
   note(loginNote, "");
 }
 
+function render(loaded: PreferencesSnapshot): void {
+  snapshot = loaded;
+  const { preferences, loginItem } = loaded;
+
+  paintTabs();
+
+  activeShortcut = preferences.shortcut;
+  shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
+  showShortcutNote(activeShortcut);
+
+  languageSelect.replaceChildren(
+    ...LANGUAGES.map(({ code, label }) => new Option(label, code, false, code === preferences.language)),
+  );
+  toggle(soundSwitch, preferences.sound);
+
+  paintModels();
+  paintDownloads();
+  paintRewrite();
+  paintLogin(loginItem);
+}
+
+/**
+ * O recado padrão do atalho: PERMANENTE e preventivo.
+ *
+ * Um atalho global do macOS tem precedência sobre atalho de menu de
+ * aplicativo, então a combinação escolhida deixa de funcionar nos outros
+ * programas enquanto o app estiver aberto. O sistema não avisa disso, e o
+ * `register` aceita qualquer coisa — medido. Dizer só depois de um teste que
+ * falhou seria tarde e fala da direção oposta.
+ */
+function showShortcutNote(accelerator: string): void {
+  note(
+    shortcutNote,
+    `Aparece como ${acceleratorToSymbols(accelerator)}. Um atalho global tem ` +
+      "precedência sobre os atalhos dos aplicativos: esta combinação deixa de " +
+      "funcionar nos outros programas enquanto o getthattext estiver aberto.",
+  );
+}
+
 /* ---------- os controles ---------- */
 
 /**
  * Grava o atalho apertando as teclas.
  *
  * Um campo de texto exigiria saber escrever `Alt+Command+G`, que é sintaxe
- * do Electron — nem todo mundo sabe, e ninguém deveria precisar. Enquanto
- * grava, `preventDefault` impede que a combinação faça o que faria: você
- * está escolhendo o atalho, não usando o computador.
+ * do Electron — nem todo mundo sabe, e ninguém deveria precisar.
  */
-function startRecording(): void {
+recordButton.addEventListener("click", () => {
   recordButton.disabled = true;
   testButton.disabled = true;
   shortcutOutput.classList.add("recording");
-  shortcutOutput.textContent = "Aperte a combinação…";
   note(shortcutNote, "Esc cancela.");
 
-  const onKey = (event: KeyboardEvent): void => {
-    event.preventDefault();
+  recordShortcut({
+    output: shortcutOutput,
+    onDone: (accelerator) => {
+      recordButton.disabled = false;
+      testButton.disabled = false;
+      shortcutOutput.classList.remove("recording");
 
-    if (event.code === "Escape" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      stopRecording();
+      if (accelerator === undefined) {
+        shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
+        showShortcutNote(activeShortcut);
 
-      return;
-    }
+        return;
+      }
 
-    const accelerator = acceleratorFromChord(event);
-    if (accelerator === undefined) {
-      // Ainda incompleto — modificador sozinho, ou tecla intraduzível.
-      shortcutOutput.textContent = acceleratorToSymbols(
-        [
-          event.ctrlKey ? "Control" : "",
-          event.altKey ? "Alt" : "",
-          event.shiftKey ? "Shift" : "",
-          event.metaKey ? "Command" : "",
-        ]
-          .filter((name) => name.length > 0)
-          .join("+"),
-      ) || "Aperte a combinação…";
-
-      return;
-    }
-
-    stopRecording();
-    void save({ shortcut: accelerator });
-  };
-
-  const stopRecording = (): void => {
-    window.removeEventListener("keydown", onKey, true);
-    recordButton.disabled = false;
-    testButton.disabled = false;
-    shortcutOutput.classList.remove("recording");
-    shortcutOutput.textContent = acceleratorToSymbols(activeShortcut);
-    showShortcutNote(activeShortcut);
-  };
-
-  window.addEventListener("keydown", onKey, true);
-}
-
-recordButton.addEventListener("click", startRecording);
+      void save({ shortcut: accelerator });
+    },
+  });
+});
 
 /**
  * O teste de atalho.
@@ -240,33 +433,97 @@ testButton.addEventListener("click", () => {
 });
 
 languageSelect.addEventListener("change", () => void save({ language: languageSelect.value }));
-rewriteBox.addEventListener("change", () => void save({ rewrite: rewriteBox.checked }));
-soundBox.addEventListener("change", () => void save({ sound: soundBox.checked }));
+providerSelect.addEventListener("change", () => void save({ provider: providerSelect.value }));
 
-el<HTMLButtonElement>("save-key").addEventListener("click", () => {
+soundSwitch.addEventListener("click", () => {
+  void save({ sound: soundSwitch.getAttribute("aria-checked") !== "true" });
+});
+
+rewriteSwitch.addEventListener("click", () => {
+  void save({ rewrite: rewriteSwitch.getAttribute("aria-checked") !== "true" });
+});
+
+modelGet.addEventListener("click", () => {
+  screen.downloading = true;
+  progress.clear();
+  if (snapshot) render(snapshot);
+  say("");
+
+  void window.preferencesBridge
+    .downloadModels()
+    .then((updated) => {
+      screen.downloading = false;
+      render(updated);
+      say("Gravado. O modelo anterior foi apagado.");
+    })
+    .catch((error: unknown) => {
+      screen.downloading = false;
+      if (snapshot) render(snapshot);
+      status.className = "bad";
+      say(reason(error));
+    });
+});
+
+window.preferencesBridge.onProgress((update) => {
+  progress.set(update.file, update);
+  paintDownloads();
+});
+
+keySaveButton.addEventListener("click", () => {
   void window.preferencesBridge
     .setApiKey(apiKeyInput.value)
-    .then((stored) => {
+    .then(() => window.preferencesBridge.load())
+    .then((updated) => {
       apiKeyInput.value = "";
-      apiKeyInput.placeholder = stored ? "•••••••• (guardada)" : "gsk_…";
-      note(
-        keyNote,
-        stored ? "Chave guardada no Keychain." : "Chave apagada.",
-        "good",
-      );
+      render(updated);
+      note(keyNote, updated.hasApiKey ? "Chave guardada no Keychain." : "Chave apagada.", "good");
     })
-    .catch((error: unknown) => note(keyNote, `Não foi possível guardar: ${reason(error)}`, "warn"));
+    .catch((error: unknown) => note(keyNote, `Não foi possível guardar: ${reason(error)}`, "bad"));
 });
 
-loginBox.addEventListener("change", () => {
+/** Recusa e rede fora pedem coisas diferentes, e por isso são dois recados. */
+const KEY_CHECK: Readonly<Record<KeyCheck["kind"], { text: string; tone: "good" | "bad" }>> = {
+  ok: { text: "O provedor respondeu. A chave é válida.", tone: "good" },
+  rejected: { text: "O provedor recusou essa chave. Confira se copiou inteira.", tone: "bad" },
+  unreachable: { text: "Não foi possível falar com o provedor. Tente de novo.", tone: "bad" },
+};
+
+keyCheckButton.addEventListener("click", () => {
+  keyCheckButton.disabled = true;
+  keyCheckButton.textContent = "Testando…";
+  note(keyNote, "Perguntando ao provedor…");
+
   void window.preferencesBridge
-    .setLoginItem(loginBox.checked)
-    // Redesenha com o que o SISTEMA ficou, não com o que o clique pediu:
-    // `register()` pode ter sucesso e ainda exigir aprovação, e um checkbox
-    // ligado só ao pedido mentiria.
-    .then(showLoginState)
-    .catch((error: unknown) => note(loginNote, `Não foi possível mudar: ${reason(error)}`, "warn"));
+    .testApiKey(apiKeyInput.value.trim())
+    .then((result) => {
+      const shown = KEY_CHECK[result.kind];
+      if (result.kind === "unreachable") console.error("teste da chave:", result.why);
+      note(keyNote, shown.text, shown.tone);
+    })
+    .catch((error: unknown) => note(keyNote, `O teste falhou: ${reason(error)}`, "bad"))
+    .finally(() => {
+      keyCheckButton.disabled = false;
+      keyCheckButton.textContent = "Testar";
+    });
 });
+
+loginSwitch.addEventListener("click", () => {
+  void window.preferencesBridge
+    .setLoginItem(loginSwitch.getAttribute("aria-checked") !== "true")
+    // Redesenha com o que o SISTEMA ficou, não com o que o clique pediu:
+    // `register()` pode ter sucesso e ainda exigir aprovação, e um controle
+    // ligado só ao pedido mentiria.
+    .then(paintLogin)
+    .catch((error: unknown) => note(loginNote, `Não foi possível mudar: ${reason(error)}`, "bad"));
+});
+
+el<HTMLButtonElement>("open-dictionary").addEventListener("click", () =>
+  window.preferencesBridge.openDictionary(),
+);
+
+el<HTMLButtonElement>("open-onboarding").addEventListener("click", () =>
+  window.preferencesBridge.openOnboarding(),
+);
 
 void window.preferencesBridge
   .load()

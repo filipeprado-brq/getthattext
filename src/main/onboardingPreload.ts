@@ -18,7 +18,7 @@ const bridge: OnboardingBridge = {
     ipcRenderer.invoke("onboarding-choose-shortcut", accelerator),
   downloadModels: () => ipcRenderer.invoke("onboarding-download"),
   onProgress: (handler) => {
-    ipcRenderer.on("onboarding-progress", (_event, progress: ModelProgress) =>
+    ipcRenderer.on("models-progress", (_event, progress: ModelProgress) =>
       handler(progress),
     );
   },
