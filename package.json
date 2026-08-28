@@ -14,7 +14,9 @@
     "start": "npm run build && electron dist/main/main.js",
     "verify:speech-gate": "node scripts/verify-speech-gate.mjs",
     "verify:rewrite": "node scripts/verify-rewrite.mjs",
-    "key:import": "electron scripts/import-groq-key.js"
+    "key:import": "electron scripts/import-groq-key.js",
+    "build:icons": "electron scripts/build-tray-icons.js",
+    "verify:blip": "electron scripts/verify-blip.js"
   },
   "keywords": [],
   "author": "",

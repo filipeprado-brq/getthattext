@@ -1,4 +1,5 @@
-import "../shared/bridge.js";
+import type { Command } from "../shared/bridge.js";
+import { scheduleBlip } from "./blip.js";
 import { encodeWav } from "../shared/wav.js";
 
 /** A taxa que o whisper.cpp espera. Pedimos direto ao Web Audio. */
@@ -163,8 +164,29 @@ async function stopRecording(): Promise<void> {
   }
 }
 
+async function playBlip(): Promise<void> {
+  if (!graph) return;
+  const { context } = graph;
+
+  await context.resume();
+  const duration = scheduleBlip(context);
+  await new Promise((resolve) => setTimeout(resolve, duration * 1000 + 50));
+
+  // Só suspende se nada estiver gravando: uma ditação pode ter começado
+  // enquanto o som tocava, e suspender ali mataria a captura dela.
+  if (!recording) await context.suspend();
+}
+
+const HANDLERS: Record<Command, () => Promise<void>> = {
+  start: startRecording,
+  stop: stopRecording,
+  blip: playBlip,
+};
+
 window.bridge.onCommand((command) => {
-  void (command === "start" ? startRecording() : stopRecording());
+  void HANDLERS[command]().catch((error) =>
+    window.bridge.reportFailure(`falha ao executar "${command}": ${String(error)}`),
+  );
 });
 
 void prewarm().catch((error) => {

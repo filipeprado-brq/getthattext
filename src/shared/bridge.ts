@@ -9,8 +9,13 @@
  * renderer — daí o tráfego nas duas direções.
  */
 
-/** Ordens que o main dá ao renderer. */
-export type Command = "start" | "stop";
+/**
+ * Ordens que o main dá ao renderer.
+ *
+ * `blip` está aqui porque o processo main não toca áudio: quem tem Web
+ * Audio é o renderer, que já mantém um `AudioContext` pré-aquecido.
+ */
+export type Command = "start" | "stop" | "blip";
 
 export type Bridge = {
   /** Assina as ordens vindas do ícone da barra. */

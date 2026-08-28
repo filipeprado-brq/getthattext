@@ -4,12 +4,14 @@ import {
   clipboard,
   ipcMain,
   Menu,
-  nativeImage,
   Tray,
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
+import { formatElapsed } from "../shared/elapsed";
+import { PRESENTATION, type State } from "../shared/states";
 import { SHORTCUT_ACCELERATOR, SHORTCUT_LABEL } from "../shared/shortcut";
+import { prepareIcons, showIcon, stopIconAnimation } from "./trayIcon";
 import {
   isShortcutRegistered,
   keepShortcutRegistered,
@@ -17,6 +19,7 @@ import {
   warnIfShortcutMissing,
 } from "./shortcut";
 import { rewriteOrRaw } from "./groq";
+import { preferences, setPreference } from "./preferences";
 import { hasSpeech, transcribe } from "./whisper";
 
 /**
@@ -27,18 +30,6 @@ import { hasSpeech, transcribe } from "./whisper";
  */
 let hidden: BrowserWindow | undefined;
 let tray: Tray | undefined;
-
-/** Estados que o app assume durante uma ditação. */
-type State =
-  | "idle"
-  | "opening"
-  | "recording"
-  | "processing"
-  | "done"
-  | "raw"
-  | "unguarded"
-  | "empty"
-  | "failed";
 
 let state: State = "idle";
 
@@ -59,71 +50,69 @@ let lastTranscript: string | undefined;
 const TERMINAL_MS = 2000;
 
 let terminalTimer: ReturnType<typeof setTimeout> | undefined;
-
-/**
- * O ícone é placeholder. O ticket #6 é dono do visual — sete estados,
- * vermelho ao gravar, respiração de 1,7 s. Aqui só precisa existir e
- * dizer em que ponto o app está.
- */
-const LABELS: Record<State, string> = {
-  idle: "",
-  opening: "abrindo…",
-  recording: "gravando",
-  processing: "transcrevendo…",
-  done: "✓ copiado",
-  raw: "✓ copiado (cru)",
-  unguarded: "✓ copiado, sem portão",
-  empty: "nada ouvido",
-  failed: "✕ falhou",
-};
-
-/**
- * Estados terminais voltam a ocioso sozinhos.
- *
- * Eles precisam ser DISTINGUÍVEIS: um texto reescrito, um texto cru, um
- * texto copiado sem o portão ter rodado, uma gravação sem fala e uma falha
- * real são resultados diferentes. Se todos voltassem em silêncio ao mesmo
- * ícone limpo, você aprenderia a ignorar todos.
- */
-const TERMINAL: ReadonlySet<State> = new Set<State>([
-  "done",
-  "raw",
-  "unguarded",
-  "empty",
-  "failed",
-]);
+let elapsedTimer: ReturnType<typeof setInterval> | undefined;
 
 function setState(next: State): void {
+  const { icon, tooltip, chime, fades } = PRESENTATION[next];
+
   state = next;
   clearTimeout(terminalTimer);
+  clearInterval(elapsedTimer);
+  elapsedTimer = undefined;
 
-  tray?.setTitle(LABELS[next] ? ` ${LABELS[next]}` : "");
-  tray?.setToolTip(
-    next === "idle" ? "getthattext — clique para ditar" : `getthattext — ${LABELS[next]}`,
-  );
-
-  if (TERMINAL.has(next)) {
-    terminalTimer = setTimeout(() => setState("idle"), TERMINAL_MS);
+  if (tray) {
+    tray.setTitle("");
+    tray.setToolTip(`getthattext — ${tooltip}`);
+    showIcon(tray, icon);
   }
+
+  if (chime && preferences().sound) send("blip");
+  if (fades) terminalTimer = setTimeout(() => setState("idle"), TERMINAL_MS);
+}
+
+/**
+ * Mostra o tempo de gravação ao lado do ícone, enquanto grava.
+ *
+ * O vermelho respirando pode passar despercebido numa barra cheia, e uma
+ * pulsação lenta se confunde com artefato de renderização; um número que
+ * muda a cada segundo não se confunde com nada. Também mostra a distância
+ * do teto de 2 minutos, que hoje só se descobre batendo nele.
+ *
+ * Começa quando o ÁUDIO começa, não no clique: o tempo de abertura do
+ * microfone não está no WAV, e contá-lo faria o número mentir sobre quanto
+ * foi gravado.
+ */
+function startElapsedCounter(): void {
+  clearInterval(elapsedTimer);
+  const startedAt = Date.now();
+
+  const tick = (): void => tray?.setTitle(` ${formatElapsed(Date.now() - startedAt)}`);
+  tick();
+  elapsedTimer = setInterval(tick, 500);
 }
 
 function send(command: Command): void {
   hidden?.webContents.send("command", command);
 }
 
+/**
+ * O clique no ícone e o atalho, que fazem a mesma coisa.
+ *
+ * Um estado terminal ainda visível já aceita uma ditação nova: engolir o
+ * clique nesse intervalo faria você achar que o app travou justamente
+ * quando ele acabou de dar certo. Em "processando" o clique é ignorado —
+ * uma segunda ditação enquanto a primeira transcreve exigiria fila.
+ */
 function toggle(): void {
-  // Estados terminais ainda são visíveis por 2 s, mas já aceitam uma nova
-  // ditação: engolir o clique nesse intervalo faria você achar que o app
-  // travou justamente quando ele acabou de dar certo.
-  if (state === "idle" || TERMINAL.has(state)) {
+  const { click } = PRESENTATION[state];
+
+  if (click === "start") {
     setState("opening");
     send("start");
-  } else if (state === "opening" || state === "recording") {
+  } else if (click === "stop") {
     setState("processing");
     send("stop");
   }
-  // Em "processing" o clique é ignorado: uma segunda ditação enquanto a
-  // primeira transcreve exigiria fila, e isso não é escopo deste ticket.
 }
 
 
@@ -140,12 +129,9 @@ function createHiddenWindow(): void {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromPath(
-    join(__dirname, "../../assets/trayTemplate.png"),
-  );
-  icon.setTemplateImage(true);
-
-  tray = new Tray(icon);
+  // O Tray exige uma imagem no construtor; `setState` troca pela do estado
+  // logo em seguida.
+  tray = new Tray(prepareIcons());
   setState("idle");
 
   // Clique esquerdo alterna; clique direito abre o menu. No macOS, definir
@@ -159,7 +145,7 @@ function createTray(): void {
         {
           label: "Ditar",
           click: toggle,
-          enabled: state !== "processing",
+          enabled: PRESENTATION[state].click !== "ignore",
           // Só exibição: quem dispara é o globalShortcut, e um accelerator
           // ativo aqui abriria caminho para o atalho disparar duas vezes.
           ...(shortcutRegistered
@@ -178,6 +164,13 @@ function createTray(): void {
           click: () => {
             if (lastTranscript !== undefined) clipboard.writeText(lastTranscript);
           },
+        },
+        { type: "separator" },
+        {
+          label: "Som ao terminar",
+          type: "checkbox",
+          checked: preferences().sound,
+          click: (item) => setPreference("sound", item.checked),
         },
         { type: "separator" },
         { label: "Sair", role: "quit" },
@@ -216,7 +209,10 @@ async function runSpeechGate(wav: Buffer): Promise<GateVerdict> {
 }
 
 ipcMain.on("audio-flowing", () => {
-  if (state === "opening") setState("recording");
+  if (state !== "opening") return;
+
+  setState("recording");
+  startElapsedCounter();
 });
 
 ipcMain.on("capture-empty", () => setState("empty"));
@@ -277,7 +273,12 @@ void app.whenReady().then(() => {
   warnIfShortcutMissing();
 });
 
-app.on("will-quit", releaseShortcut);
+app.on("will-quit", () => {
+  releaseShortcut();
+  stopIconAnimation();
+  clearTimeout(terminalTimer);
+  clearInterval(elapsedTimer);
+});
 
 // A janela oculta nunca é fechada pelo usuário; sem este handler o Electron
 // encerraria o app se ela sumisse por qualquer motivo.
