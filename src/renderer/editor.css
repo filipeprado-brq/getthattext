@@ -47,7 +47,7 @@ h1 {
 
 section + section { margin-top: 26px; }
 
-#hint { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; }
+#hint { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 
 /* A transcrição crua, com as palavras clicáveis. */
 #heard-text {
