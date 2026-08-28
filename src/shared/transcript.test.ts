@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildWhisperArgs, cleanTranscript } from "./transcript";
 
 describe("buildWhisperArgs", () => {
-  const args = buildWhisperArgs("/modelos/turbo.bin");
+  const args = buildWhisperArgs("/modelos/turbo.bin", "pt");
 
   it("lê o áudio do stdin", () => {
     // A spec descarta arquivo temporário: sem disco, sem limpeza a errar.
@@ -14,8 +14,11 @@ describe("buildWhisperArgs", () => {
     expect(args[args.indexOf("-m") + 1]).toBe("/modelos/turbo.bin");
   });
 
-  it("força português em vez de deixar o auto-detect decidir", () => {
+  it("passa o idioma recebido", () => {
     expect(args[args.indexOf("-l") + 1]).toBe("pt");
+    expect(
+      buildWhisperArgs("/m.bin", "auto")[buildWhisperArgs("/m.bin", "auto").indexOf("-l") + 1],
+    ).toBe("auto");
   });
 
   it("usa o modo de menor latência decidido na spec", () => {
@@ -78,7 +81,7 @@ describe("cleanTranscript", () => {
 });
 
 describe("buildWhisperArgs — a armadilha do stdin", () => {
-  const args = buildWhisperArgs("/modelos/turbo.bin");
+  const args = buildWhisperArgs("/modelos/turbo.bin", "pt");
 
   it("pede saída de texto para stdout, sem o que a transcrição se perde", () => {
     // Com entrada "-", o whisper-cli deriva o nome do arquivo de saída da

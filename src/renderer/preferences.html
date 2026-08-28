@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>Preferências</title>
+    <link rel="stylesheet" href="./editor.css" />
+    <link rel="stylesheet" href="./preferences.css" />
+  </head>
+  <body>
+    <section>
+      <h1>Ditado</h1>
+
+      <div class="pref">
+        <label for="shortcut">Atalho</label>
+        <div class="control">
+          <input id="shortcut" autocomplete="off" spellcheck="false" />
+          <button id="test" type="button">Testar</button>
+        </div>
+        <p class="note" id="shortcut-note"></p>
+      </div>
+
+      <div class="pref">
+        <label for="language">Idioma</label>
+        <div class="control"><select id="language"></select></div>
+      </div>
+
+      <div class="pref">
+        <label for="model">Modelo</label>
+        <div class="control"><select id="model"></select></div>
+        <p class="note" id="model-note"></p>
+      </div>
+    </section>
+
+    <section>
+      <h1>Depois de transcrever</h1>
+
+      <div class="pref">
+        <label for="rewrite">Reescrever com IA</label>
+        <div class="control">
+          <input id="rewrite" type="checkbox" />
+          <span class="inline">Desligue quando o texto não puder ser alterado.</span>
+        </div>
+      </div>
+
+      <div class="pref">
+        <label for="api-key">Chave do Groq</label>
+        <div class="control">
+          <input id="api-key" type="password" autocomplete="off" placeholder="gsk_…" />
+          <button id="save-key" type="button">Guardar</button>
+        </div>
+        <p class="note" id="key-note"></p>
+      </div>
+
+      <div class="pref">
+        <label for="sound">Som ao terminar</label>
+        <div class="control"><input id="sound" type="checkbox" /></div>
+      </div>
+    </section>
+
+    <section>
+      <h1>Sistema</h1>
+      <div class="pref">
+        <label for="login">Abrir no login</label>
+        <div class="control"><input id="login" type="checkbox" /></div>
+        <p class="note" id="login-note"></p>
+      </div>
+    </section>
+
+    <p id="status" role="status"></p>
+    <script type="module" src="./preferences.js"></script>
+  </body>
+</html>

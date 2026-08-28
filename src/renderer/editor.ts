@@ -1,4 +1,5 @@
 import type { Entry } from "../shared/dictionary.js";
+import { reason } from "../shared/errors.js";
 import {
   heardRejection,
   phraseFrom,
@@ -64,11 +65,6 @@ const count = el("count");
 
 function say(message: string): void {
   status.textContent = message;
-}
-
-/** A mensagem, sem o "Error:" que o `String(error)` empilha. */
-function reason(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**

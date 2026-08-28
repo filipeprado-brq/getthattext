@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { preferences } from "./preferences";
 import { buildVadArgs, countSpeechSegments } from "../shared/speechGate";
 import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
 
@@ -11,8 +14,22 @@ import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
  */
 export const WHISPER_BIN = "/opt/homebrew/bin/whisper-cli";
 export const VAD_BIN = "/opt/homebrew/bin/whisper-vad-speech-segments";
-export const MODEL_PATH = `${process.env["HOME"]}/.cache/whisper/ggml-large-v3-turbo-q5_0.bin`;
-export const VAD_MODEL_PATH = `${process.env["HOME"]}/.cache/whisper/ggml-silero-v5.1.2.bin`;
+
+/** Onde os modelos moram. O #10 baixa para cá, o #12 empacota. */
+export const MODELS_DIR = `${process.env["HOME"]}/.cache/whisper`;
+
+export const VAD_MODEL_PATH = join(MODELS_DIR, "ggml-silero-v5.1.2.bin");
+
+/** Os modelos de transcrição presentes, para a tela de preferências listar. */
+export function availableModels(): string[] {
+  try {
+    return readdirSync(MODELS_DIR)
+      .filter((name) => name.endsWith(".bin") && !name.includes("silero"))
+      .sort();
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Roda um binário do whisper.cpp com o WAV no stdin e devolve o stdout.
@@ -78,9 +95,10 @@ export async function hasSpeech(wav: Buffer): Promise<boolean> {
  * e o VAD dentro da transcrição engoliria conteúdo real.
  */
 export async function transcribe(wav: Buffer): Promise<string> {
+  const { model, language } = preferences();
   const stdout = await runWithWavOnStdin(
     WHISPER_BIN,
-    buildWhisperArgs(MODEL_PATH),
+    buildWhisperArgs(join(MODELS_DIR, model), language),
     wav,
   );
 

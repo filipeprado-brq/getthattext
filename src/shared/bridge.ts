@@ -1,4 +1,5 @@
 import type { Entry } from "./dictionary.js";
+import type { Preferences } from "./preferences.js";
 
 /**
  * Contrato entre o processo main e o renderer.
@@ -55,5 +56,51 @@ export type DictionaryBridge = {
 declare global {
   interface Window {
     dictionaryBridge: DictionaryBridge;
+  }
+}
+
+/**
+ * O estado real de "abrir no login", que mora no sistema, não no arquivo.
+ *
+ * Os quatro valores do `SMAppService`, sem reduzir para booleano: é a
+ * distinção entre `enabled` e `requires-approval` que impede o checkbox de
+ * mentir, e `not-found` precisa de recado próprio.
+ */
+export type LoginItemState = {
+  status: "not-registered" | "enabled" | "requires-approval" | "not-found";
+};
+
+/** Tudo que a tela de preferências precisa saber ao abrir. */
+export type PreferencesSnapshot = {
+  preferences: Preferences;
+  /** Modelos encontrados na pasta, para a tela não oferecer o que não existe. */
+  models: string[];
+  loginItem: LoginItemState;
+  /** Só se EXISTE. A chave nunca cruza o IPC. */
+  hasApiKey: boolean;
+};
+
+/**
+ * O resultado de esperar o atalho.
+ *
+ * `cancelled` existe para a promise nunca ficar pendurada: fechar a janela
+ * ou pedir outro teste precisa RESOLVER o anterior, não abandoná-lo.
+ */
+export type ShortcutTest = "arrived" | "timeout" | "cancelled";
+
+export type PreferencesBridge = {
+  load(): Promise<PreferencesSnapshot>;
+  /** Grava um pedaço e devolve tudo, já normalizado pelo parse. */
+  save(patch: Partial<Preferences>): Promise<PreferencesSnapshot>;
+  setLoginItem(enabled: boolean): Promise<LoginItemState>;
+  /** Grava a chave, ou apaga se vier vazia. Devolve se passou a existir. */
+  setApiKey(key: string): Promise<boolean>;
+  /** Espera você apertar o atalho. É a única verificação honesta que existe. */
+  testShortcut(): Promise<ShortcutTest>;
+};
+
+declare global {
+  interface Window {
+    preferencesBridge: PreferencesBridge;
   }
 }

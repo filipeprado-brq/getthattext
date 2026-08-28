@@ -16,11 +16,14 @@
  * dentro da transcrição ele engole conteúdo real — o portão de fala roda
  * separado, antes.
  */
-export function buildWhisperArgs(modelPath: string): string[] {
+export function buildWhisperArgs(modelPath: string, language: string): string[] {
   return [
     "-m", modelPath,
     "-f", "-",
-    "-l", "pt",
+    // `auto` é aceito pelo whisper e significa detectar. É questão aberta
+    // declarada na spec (seção 13): nunca foi testado, e o corpus inteiro
+    // rodou com o idioma forçado.
+    "-l", language,
     "-nt",  // sem timestamps
     "-np",  // sem prints de progresso
     "-sns", // suprime tokens de não-fala

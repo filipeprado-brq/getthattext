@@ -1,3 +1,5 @@
+import { isValidAccelerator, SHORTCUT_ACCELERATOR } from "./shortcut.js";
+
 /**
  * As preferências do app, e como ler o arquivo delas sem confiar nele.
  *
@@ -5,8 +7,23 @@
  * disco cheio ou escrito por outra versão do app vira comportamento errado
  * em silêncio.
  *
- * O #9 é dono da interface de preferências e vai acrescentar chaves aqui.
+ * "Abrir no login" NÃO mora aqui. O sistema é a fonte da verdade daquilo, e
+ * guardar uma cópia criaria duas — que discordariam no dia em que você
+ * mexesse pelo painel do macOS.
  */
+
+/** Os idiomas oferecidos na tela. O whisper aceita mais; estes são os úteis. */
+export const LANGUAGES = [
+  { code: "pt", label: "Português" },
+  { code: "en", label: "Inglês" },
+  { code: "es", label: "Espanhol" },
+  { code: "fr", label: "Francês" },
+  { code: "de", label: "Alemão" },
+  { code: "it", label: "Italiano" },
+  // Questão aberta declarada na seção 13 da spec: nunca foi testado, e o
+  // corpus inteiro rodou com o idioma forçado.
+  { code: "auto", label: "Detectar (não testado)" },
+] as const;
 
 export type Preferences = {
   /**
@@ -17,20 +34,48 @@ export type Preferences = {
    * de menu.
    */
   sound: boolean;
+  /**
+   * Passar o texto pelo Groq.
+   *
+   * Ligado por padrão. Desligar quando o texto não pode ser alterado:
+   * citação literal, trecho contratual, nome que precisa sair exato.
+   */
+  rewrite: boolean;
+  /** O atalho global, em sintaxe de accelerator do Electron. */
+  shortcut: string;
+  /** Código de idioma passado ao whisper, ou `auto`. */
+  language: string;
+  /** Nome do arquivo do modelo, dentro da pasta de modelos. */
+  model: string;
 };
 
-export const DEFAULT_PREFERENCES: Preferences = { sound: true };
+export const DEFAULT_PREFERENCES: Preferences = {
+  sound: true,
+  rewrite: true,
+  shortcut: SHORTCUT_ACCELERATOR,
+  language: "pt",
+  model: "ggml-large-v3-turbo-q5_0.bin",
+};
+
+/** Fica com o valor gravado só se ele for do tipo certo. */
+function pick<K extends keyof Preferences>(
+  stored: Record<string, unknown>,
+  key: K,
+  accept: (value: unknown) => boolean,
+): Preferences[K] {
+  return accept(stored[key])
+    ? (stored[key] as Preferences[K])
+    : DEFAULT_PREFERENCES[key];
+}
+
+const isBoolean = (value: unknown): boolean => typeof value === "boolean";
 
 /**
  * Lê o arquivo de preferências, caindo no padrão a cada dúvida.
  *
- * Nenhuma entrada ruim pode derrubar o app: sem arquivo, JSON quebrado, ou
- * valor com o tipo errado, tudo vira o padrão. O pior desfecho possível é
- * uma preferência voltar ao default, e isso é visível e corrigível.
- *
- * Chaves desconhecidas são PRESERVADAS. O #9 vai acrescentar preferências,
- * e reescrever o arquivo sem o que não se reconhece apagaria configuração
- * de outra versão do app.
+ * CAMPO A CAMPO, não o arquivo inteiro: um idioma com typo não pode custar
+ * o atalho que você configurou. Chaves desconhecidas são preservadas —
+ * reescrever o arquivo sem elas apagaria configuração de outra versão.
  */
 export function parsePreferences(text: string | undefined): Preferences {
   if (text === undefined) return { ...DEFAULT_PREFERENCES };
@@ -50,8 +95,22 @@ export function parsePreferences(text: string | undefined): Preferences {
 
   return {
     ...stored,
-    // `sound: "false"` é string, e string não-vazia é truthy: deixar passar
-    // ligaria o som de quem pediu para desligar.
-    sound: typeof stored["sound"] === "boolean" ? stored["sound"] : DEFAULT_PREFERENCES.sound,
+    sound: pick(stored, "sound", isBoolean),
+    rewrite: pick(stored, "rewrite", isBoolean),
+    shortcut: pick(
+      stored,
+      "shortcut",
+      (value) => typeof value === "string" && isValidAccelerator(value),
+    ),
+    language: pick(
+      stored,
+      "language",
+      (value) => LANGUAGES.some((language) => language.code === value),
+    ),
+    model: pick(
+      stored,
+      "model",
+      (value) => typeof value === "string" && value.length > 0,
+    ),
   };
 }

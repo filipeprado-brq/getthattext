@@ -1,43 +1,76 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PREFERENCES, parsePreferences } from "./preferences";
+import { DEFAULT_PREFERENCES, LANGUAGES, parsePreferences } from "./preferences";
+import { isValidAccelerator } from "./shortcut";
 
 describe("parsePreferences", () => {
   it("lê o que foi gravado", () => {
-    expect(parsePreferences('{"sound":false}').sound).toBe(false);
-    expect(parsePreferences('{"sound":true}').sound).toBe(true);
+    const parsed = parsePreferences(
+      '{"sound":false,"rewrite":false,"shortcut":"Control+Command+K","language":"en","model":"ggml-base.bin"}',
+    );
+
+    expect(parsed).toMatchObject({
+      sound: false,
+      rewrite: false,
+      shortcut: "Control+Command+K",
+      language: "en",
+      model: "ggml-base.bin",
+    });
   });
 
-  it("cai no padrão quando o arquivo não existe", () => {
-    expect(parsePreferences(undefined)).toEqual(DEFAULT_PREFERENCES);
+  it("cai no padrão quando o arquivo não existe ou está corrompido", () => {
+    // Preferência ilegível não pode derrubar o app: o pior que acontece é
+    // uma configuração voltar ao default, que é visível e corrigível.
+    for (const bad of [undefined, "{isto não é json", "", "null", "[1,2,3]"]) {
+      expect(parsePreferences(bad)).toEqual(DEFAULT_PREFERENCES);
+    }
   });
 
-  it("cai no padrão quando o arquivo está corrompido", () => {
-    // Preferência ilegível não pode derrubar o app: o pior que pode
-    // acontecer é o som voltar ligado.
-    expect(parsePreferences("{isto não é json")).toEqual(DEFAULT_PREFERENCES);
-    expect(parsePreferences("")).toEqual(DEFAULT_PREFERENCES);
-    expect(parsePreferences("null")).toEqual(DEFAULT_PREFERENCES);
-    expect(parsePreferences("[1,2,3]")).toEqual(DEFAULT_PREFERENCES);
+  it("cada campo cai no padrão SOZINHO", () => {
+    // Um campo estragado não pode custar os outros: você perderia a chave
+    // do atalho por causa de um typo no idioma.
+    const parsed = parsePreferences('{"sound":false,"language":"klingon","model":123}');
+
+    expect(parsed.sound).toBe(false);
+    expect(parsed.language).toBe(DEFAULT_PREFERENCES.language);
+    expect(parsed.model).toBe(DEFAULT_PREFERENCES.model);
   });
 
-  it("ignora valor com o tipo errado em vez de propagá-lo", () => {
-    // `sound: "false"` é string, e uma string não-vazia é truthy — deixar
+  it("ignora booleano com o tipo errado em vez de propagá-lo", () => {
+    // `sound: "false"` é string, e string não-vazia é truthy — deixar
     // passar ligaria o som de quem pediu para desligar.
     expect(parsePreferences('{"sound":"false"}').sound).toBe(true);
-    expect(parsePreferences('{"sound":0}').sound).toBe(true);
+    expect(parsePreferences('{"rewrite":0}').rewrite).toBe(true);
+  });
+
+  it("recusa atalho que não é atalho", () => {
+    // Um atalho inválido não registra, e o sintoma seria a tecla
+    // simplesmente não fazer nada — indistinguível de não ter apertado.
+    expect(parsePreferences('{"shortcut":"banana"}').shortcut).toBe(
+      DEFAULT_PREFERENCES.shortcut,
+    );
+    expect(parsePreferences('{"shortcut":""}').shortcut).toBe(DEFAULT_PREFERENCES.shortcut);
   });
 
   it("preserva chaves que não conhece", () => {
-    // O #9 vai acrescentar preferências. Reescrever o arquivo sem elas
-    // apagaria configuração de outra versão do app.
-    const parsed = parsePreferences('{"sound":false,"shortcut":"Cmd+J"}');
-    expect(parsed.sound).toBe(false);
-    expect((parsed as Record<string, unknown>)["shortcut"]).toBe("Cmd+J");
+    // Reescrever o arquivo sem elas apagaria configuração de outra versão.
+    const parsed = parsePreferences('{"sound":false,"futuro":"x"}');
+    expect((parsed as Record<string, unknown>)["futuro"]).toBe("x");
+  });
+});
+
+describe("DEFAULT_PREFERENCES", () => {
+  it("som e reescrita vêm ligados", () => {
+    // O som fecha o ciclo, porque no momento em que o texto fica pronto seu
+    // olhar está no input onde vai colar. A reescrita é o produto.
+    expect(DEFAULT_PREFERENCES.sound).toBe(true);
+    expect(DEFAULT_PREFERENCES.rewrite).toBe(true);
   });
 
-  it("o som vem ligado por padrão", () => {
-    // A spec: o som é o que fecha o ciclo, porque no momento em que o texto
-    // fica pronto seu olhar está no input onde vai colar.
-    expect(DEFAULT_PREFERENCES.sound).toBe(true);
+  it("o idioma padrão está entre os oferecidos", () => {
+    expect(LANGUAGES.map((l) => l.code)).toContain(DEFAULT_PREFERENCES.language);
+  });
+
+  it("o atalho padrão é válido pelas próprias regras", () => {
+    expect(isValidAccelerator(DEFAULT_PREFERENCES.shortcut)).toBe(true);
   });
 });

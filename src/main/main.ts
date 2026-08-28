@@ -9,20 +9,28 @@ import {
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
 import { applyDictionary, type Entry } from "../shared/dictionary";
+import type { PreferencesSnapshot } from "../shared/bridge";
+import type { Preferences } from "../shared/preferences";
 import { formatElapsed } from "../shared/elapsed";
 import { PRESENTATION, type State } from "../shared/states";
-import { SHORTCUT_ACCELERATOR, SHORTCUT_LABEL } from "../shared/shortcut";
+import { acceleratorToSymbols } from "../shared/shortcut";
 import { prepareIcons, showIcon, stopIconAnimation } from "./trayIcon";
 import {
+  armShortcutTest,
+  cancelShortcutTest,
+  currentShortcut,
   isShortcutRegistered,
   keepShortcutRegistered,
+  reapplyShortcut,
   releaseShortcut,
   warnIfShortcutMissing,
 } from "./shortcut";
 import { dictionary, saveDictionary } from "./dictionary";
+import { loginItem, setLoginItem } from "./loginItem";
+import { clearApiKey, hasApiKey, saveApiKey } from "./apiKey";
 import { rewriteOrRaw } from "./groq";
-import { preferences, setPreference } from "./preferences";
-import { hasSpeech, transcribe } from "./whisper";
+import { preferences, updatePreferences } from "./preferences";
+import { availableModels, hasSpeech, transcribe } from "./whisper";
 
 /**
  * As janelas do app, agrupadas porque só fazem sentido juntas.
@@ -31,7 +39,11 @@ import { hasSpeech, transcribe } from "./whisper";
  * processo main — ela fica oculta, fazendo captura e mais nada. `editor` é a
  * única janela que você vê, e só quando pede.
  */
-const windows: { hidden?: BrowserWindow; editor?: BrowserWindow } = {};
+const windows: {
+  hidden?: BrowserWindow;
+  editor?: BrowserWindow;
+  preferences?: BrowserWindow;
+} = {};
 
 let tray: Tray | undefined;
 
@@ -141,49 +153,63 @@ function createHiddenWindow(): void {
 }
 
 /**
- * Abre o editor de dicionário, ou traz para frente o que já está aberto.
+ * Abre uma janela utilitária, ou traz para frente a que já está aberta.
  *
- * Uma instância só: duas janelas editando o mesmo arquivo se sobrescreveriam
- * sem que nenhuma das duas soubesse.
+ * Uma instância por janela: duas editando o mesmo arquivo se sobrescreveriam
+ * sem que nenhuma soubesse.
  *
  * `app.focus({ steal: true })` é necessário porque o app não tem ícone no
- * Dock — sem isso a janela abre atrás do que você estava usando, que para
- * quem acabou de escolher "Dicionário…" no menu parece que nada aconteceu.
+ * Dock — sem isso a janela abre atrás do que você estava usando, o que para
+ * quem acabou de escolher um item de menu parece que nada aconteceu.
  */
-function openDictionaryEditor(): void {
-  if (windows.editor) {
-    windows.editor.show();
-    windows.editor.focus();
+function openWindow(
+  key: "editor" | "preferences",
+  title: string,
+  size: { width: number; height: number },
+  onClosed?: () => void,
+): void {
+  const existing = windows[key];
+  if (existing) {
+    existing.show();
+    existing.focus();
     app.focus({ steal: true });
 
     return;
   }
 
-  const editor = new BrowserWindow({
-    width: 640,
-    height: 620,
+  const created = new BrowserWindow({
+    ...size,
     minWidth: 520,
     minHeight: 380,
-    title: "Dicionário",
+    title,
     show: false,
     webPreferences: {
-      preload: join(__dirname, "editorPreload.js"),
+      preload: join(__dirname, `${key}Preload.js`),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
-  editor.once("ready-to-show", () => {
-    editor.show();
+  created.once("ready-to-show", () => {
+    created.show();
     app.focus({ steal: true });
   });
-  editor.on("closed", () => {
-    windows.editor = undefined;
+  created.on("closed", () => {
+    windows[key] = undefined;
+    onClosed?.();
   });
 
-  void editor.loadFile(join(__dirname, "../renderer/editor.html"));
-  windows.editor = editor;
+  void created.loadFile(join(__dirname, `../renderer/${key}.html`));
+  windows[key] = created;
 }
+
+const openDictionaryEditor = (): void =>
+  openWindow("editor", "Dicionário", { width: 640, height: 620 });
+
+const openPreferences = (): void =>
+  // Um teste de atalho armado não pode sobreviver à janela que o pediu: ele
+  // engoliria a próxima ditação.
+  openWindow("preferences", "Preferências", { width: 560, height: 640 }, cancelShortcutTest);
 
 function createTray(): void {
   // O Tray exige uma imagem no construtor; `setState` troca pela do estado
@@ -206,14 +232,19 @@ function createTray(): void {
           // Só exibição: quem dispara é o globalShortcut, e um accelerator
           // ativo aqui abriria caminho para o atalho disparar duas vezes.
           ...(shortcutRegistered
-            ? { accelerator: SHORTCUT_ACCELERATOR, registerAccelerator: false }
+            ? { accelerator: currentShortcut(), registerAccelerator: false }
             : {}),
         },
         // O aviso permanente: o diálogo do boot você fecha e esquece, isto
         // fica enquanto o atalho não estiver valendo.
         ...(shortcutRegistered
           ? []
-          : [{ label: `⚠ ${SHORTCUT_LABEL} não registrado`, enabled: false }]),
+          : [
+              {
+                label: `⚠ ${acceleratorToSymbols(currentShortcut())} não registrado`,
+                enabled: false,
+              },
+            ]),
         { type: "separator" },
         {
           label: "Copiar transcrição crua",
@@ -223,14 +254,8 @@ function createTray(): void {
           },
         },
         { type: "separator" },
+        { label: "Preferências…", click: openPreferences, accelerator: "Command+," },
         { label: "Dicionário…", click: openDictionaryEditor },
-        { type: "separator" },
-        {
-          label: "Som ao terminar",
-          type: "checkbox",
-          checked: preferences().sound,
-          click: (item) => setPreference("sound", item.checked),
-        },
         { type: "separator" },
         { label: "Sair", role: "quit" },
       ]),
@@ -281,6 +306,57 @@ ipcMain.on("capture-failed", (_event, reason: string) => {
   setState("failed");
 });
 
+/**
+ * O que a tela de preferências vê.
+ *
+ * Anotado com o tipo do contrato de propósito: sem isso o lado main poderia
+ * divergir do renderer sem erro de compilação, que é o que a regra 6 existe
+ * para impedir.
+ *
+ * `hasApiKey` olha a existência do arquivo em vez de descriptografar: a
+ * chave em si nunca cruza o IPC, e um erro de Keychain viraria "não há
+ * chave" — mentira que a tela repetiria dizendo que o app está em modo cru.
+ */
+function snapshot(): PreferencesSnapshot {
+  return {
+    preferences: preferences(),
+    models: availableModels(),
+    loginItem: loginItem(),
+    hasApiKey: hasApiKey(),
+  };
+}
+
+ipcMain.handle("preferences-load", () => snapshot());
+
+ipcMain.handle("preferences-save", (_event, patch: Partial<Preferences>) => {
+  const before = preferences().shortcut;
+  const saved = updatePreferences(patch);
+  // O atalho só passa a valer depois de re-registrar; sem isto a tela
+  // mostraria o novo e o teclado continuaria no antigo.
+  if (saved.shortcut !== before) reapplyShortcut();
+
+  return snapshot();
+});
+
+ipcMain.handle("preferences-login-item", (_event, enabled: unknown) =>
+  setLoginItem(enabled === true),
+);
+
+ipcMain.handle("preferences-api-key", async (_event, key: unknown) => {
+  const value = typeof key === "string" ? key.trim() : "";
+  if (value.length === 0) {
+    await clearApiKey();
+
+    return false;
+  }
+
+  await saveApiKey(value);
+
+  return true;
+});
+
+ipcMain.handle("preferences-test-shortcut", () => armShortcutTest());
+
 ipcMain.handle("dictionary-load", () => ({
   entries: dictionary(),
   // `undefined` quando não houve ditação nesta sessão: é o que desabilita
@@ -319,14 +395,19 @@ ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
     const corrected = applyDictionary(transcript, entries);
     lastDictation = { heard: transcript, corrected };
 
-    const rewritten = await rewriteOrRaw(corrected, entries);
-    if (rewritten.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
+    // `undefined` = a reescrita está DESLIGADA nas preferências. É diferente
+    // de ter falhado: o cru é o resultado pedido, não uma degradação, e o
+    // ícone não pode acusar problema onde não há.
+    const rewritten = preferences().rewrite
+      ? await rewriteOrRaw(corrected, entries)
+      : undefined;
+    if (rewritten?.kind === "raw") console.warn(`modo cru: ${rewritten.why}`);
 
     // "Cru" aqui significa "não passou pela IA". A substituição é
     // determinística e offline: não há razão para perdê-la porque o Groq
     // caiu.
     clipboard.writeText(
-      rewritten.kind === "rewritten" ? rewritten.text : corrected,
+      rewritten?.kind === "rewritten" ? rewritten.text : corrected,
     );
 
     // As duas degradações são independentes e podem acontecer juntas. O cru
@@ -334,7 +415,7 @@ ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
     // do próximo segundo — o ticket 12 promete que você sabe que recebeu o
     // cru PELO ÍCONE. "Sem portão" é instalação quebrada: condição
     // permanente, que se anuncia sozinha nas outras ditações.
-    if (rewritten.kind === "raw") setState("raw");
+    if (rewritten?.kind === "raw") setState("raw");
     else setState(verdict === "unavailable" ? "unguarded" : "done");
   } catch (error) {
     console.error("transcrição falhou:", error);

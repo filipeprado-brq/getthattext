@@ -10,7 +10,7 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "tsc -p tsconfig.renderer.json",
     "build": "npm run build:main && npm run build:renderer && npm run copy:assets",
-    "copy:assets": "cp src/renderer/index.html src/renderer/editor.html src/renderer/editor.css src/renderer/pcm-worklet.js dist/renderer/",
+    "copy:assets": "cp src/renderer/index.html src/renderer/editor.html src/renderer/editor.css src/renderer/preferences.html src/renderer/preferences.css src/renderer/pcm-worklet.js dist/renderer/",
     "start": "npm run build && electron dist/main/main.js",
     "verify:speech-gate": "node scripts/verify-speech-gate.mjs",
     "verify:rewrite": "node scripts/verify-rewrite.mjs",

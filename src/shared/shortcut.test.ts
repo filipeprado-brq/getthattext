@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   acceleratorToSymbols,
+  isValidAccelerator,
   SHORTCUT_ACCELERATOR,
-  SHORTCUT_LABEL,
 } from "./shortcut";
 
 describe("o atalho padrão", () => {
   it("é ⌥⌘G: dois modificadores adjacentes, não três", () => {
     expect(SHORTCUT_ACCELERATOR).toBe("Alt+Command+G");
-    expect(SHORTCUT_LABEL).toBe("⌥⌘G");
+    expect(acceleratorToSymbols(SHORTCUT_ACCELERATOR)).toBe("⌥⌘G");
   });
 
   it("não é ⌘ + tecla única", () => {
@@ -18,10 +18,9 @@ describe("o atalho padrão", () => {
     expect(SHORTCUT_ACCELERATOR.split("+").length).toBeGreaterThan(2);
   });
 
-  it("o rótulo do menu sai do accelerator, não de uma segunda fonte", () => {
-    // Escrever "⌃⌥⌘G" à mão no menu e "Control+Alt+Command+G" no register
-    // não teria nada que os mantivesse em sincronia.
-    expect(SHORTCUT_LABEL).toBe(acceleratorToSymbols(SHORTCUT_ACCELERATOR));
+  it("é sempre válido pelas próprias regras", () => {
+    // O padrão não pode ser algo que a tela de preferências recusaria.
+    expect(isValidAccelerator(SHORTCUT_ACCELERATOR)).toBe(true);
   });
 });
 
@@ -46,5 +45,34 @@ describe("acceleratorToSymbols", () => {
   it("deixa a tecla base como está", () => {
     expect(acceleratorToSymbols("Command+Space")).toBe("⌘Space");
     expect(acceleratorToSymbols("F13")).toBe("F13");
+  });
+});
+
+describe("isValidAccelerator", () => {
+  it("aceita modificador mais tecla", () => {
+    expect(isValidAccelerator("Alt+Command+G")).toBe(true);
+    expect(isValidAccelerator("Control+Shift+F5")).toBe(true);
+    expect(isValidAccelerator("CommandOrControl+J")).toBe(true);
+  });
+
+  it("RECUSA tecla sem modificador", () => {
+    // Registrar "G" global sequestraria a letra G em TODO o sistema. Não é
+    // hipótese: é o que o campo de atalho aceitaria digitado sem cuidado.
+    expect(isValidAccelerator("G")).toBe(false);
+    expect(isValidAccelerator("Space")).toBe(false);
+  });
+
+  it("recusa só modificadores, sem tecla", () => {
+    expect(isValidAccelerator("Alt+Command")).toBe(false);
+  });
+
+  it("recusa duas teclas base", () => {
+    expect(isValidAccelerator("Command+G+K")).toBe(false);
+  });
+
+  it("recusa lixo", () => {
+    expect(isValidAccelerator("")).toBe(false);
+    expect(isValidAccelerator("+++")).toBe(false);
+    expect(isValidAccelerator("Comand+G")).toBe(false);
   });
 });

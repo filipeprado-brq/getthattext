@@ -45,19 +45,26 @@ export function preferences(): Preferences {
   return cached;
 }
 
-/** Grava uma preferência, preservando o resto do arquivo. */
-export function setPreference<K extends keyof Preferences>(
-  key: K,
-  value: Preferences[K],
-): void {
-  const updated = { ...preferences(), [key]: value };
-  cached = updated;
+/**
+ * Grava um pedaço das preferências, preservando o resto do arquivo.
+ *
+ * Reprocessa pelo parse antes de guardar em memória: o patch vem do IPC, e
+ * o tipo declarado na fronteira é promessa, não garantia. Assim o que fica
+ * em `cached` é o mesmo que um `load` devolveria.
+ */
+export function updatePreferences(patch: Partial<Preferences>): Preferences {
+  const merged = { ...preferences(), ...patch };
+  const clean = parsePreferences(JSON.stringify(merged));
+  cached = clean;
 
   try {
-    writeFileSync(path(), `${JSON.stringify(updated, null, 2)}\n`);
+    writeFileSync(path(), `${JSON.stringify(clean, null, 2)}\n`);
   } catch (error) {
     console.error("não foi possível gravar as preferências:", error);
   }
+
+  return clean;
 }
+
 
 export { DEFAULT_PREFERENCES };

@@ -1,4 +1,5 @@
 import { app, safeStorage } from "electron";
+import { existsSync } from "node:fs";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -72,4 +73,16 @@ export async function loadApiKey(): Promise<string | undefined> {
 /** Apaga a chave. Usado quando o Groq responde que ela é inválida. */
 export async function clearApiKey(): Promise<void> {
   await rm(keyPath(), { force: true });
+}
+
+/**
+ * Existe uma chave guardada?
+ *
+ * Olha o arquivo em vez de descriptografar. Duas razões: descriptografar a
+ * cada toggle de preferência é trabalho à toa, e um erro de Keychain viraria
+ * "não há chave" — que é mentira, e a tela repetiria a mentira dizendo que o
+ * app está em modo cru.
+ */
+export function hasApiKey(): boolean {
+  return existsSync(keyPath());
 }

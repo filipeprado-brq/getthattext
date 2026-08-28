@@ -56,6 +56,11 @@ function symbolFor(part: string): string | undefined {
   return MODIFIERS.find(([, names]) => names.includes(lowered))?.[0];
 }
 
+/** Todo nome de modificador que o Electron aceita, em minúsculas. */
+export const MODIFIER_NAMES: ReadonlySet<string> = new Set(
+  MODIFIERS.flatMap(([, names]) => names),
+);
+
 /** Traduz um accelerator do Electron para os símbolos que o menu mostra. */
 export function acceleratorToSymbols(accelerator: string): string {
   const parts = accelerator.split("+");
@@ -68,5 +73,21 @@ export function acceleratorToSymbols(accelerator: string): string {
   return modifiers + parts.filter((part) => !symbolFor(part)).join("");
 }
 
-/** O mesmo atalho, do jeito que o menu do macOS o escreve. */
-export const SHORTCUT_LABEL = acceleratorToSymbols(SHORTCUT_ACCELERATOR);
+
+/**
+ * A combinação é registrável?
+ *
+ * Exige ao menos um modificador. Não é preciosismo: registrar `G` como
+ * atalho global sequestraria a letra G em TODO o sistema, e é exatamente o
+ * que um campo de texto aceitaria de quem digitou sem pensar.
+ *
+ * Exige também exatamente UMA tecla base — `Command+G+K` não existe.
+ */
+export function isValidAccelerator(accelerator: string): boolean {
+  const parts = accelerator.split("+");
+  if (parts.some((part) => part.length === 0)) return false;
+
+  const modifiers = parts.filter((part) => MODIFIER_NAMES.has(part.toLowerCase()));
+
+  return modifiers.length > 0 && parts.length - modifiers.length === 1;
+}
