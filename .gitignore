@@ -14,3 +14,10 @@ out/
 *.key
 .env
 .env.*
+
+# Binários do whisper.cpp, gerados pelo build ou baixados do CI
+vendor/whisper/*
+!vendor/whisper/README.md
+
+# Saída do empacotamento
+release/

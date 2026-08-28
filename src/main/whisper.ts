@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { MODELS } from "../shared/models";
+import { binaryPath } from "./binaries";
 import { modelPath, modelsDir } from "./models";
 import { preferences } from "./preferences";
 import { type FailureKind, isModelLoadFailure } from "../shared/failures";
@@ -14,8 +15,12 @@ import { buildWhisperArgs, cleanTranscript } from "../shared/transcript";
  * no onboarding (#10). Até lá, aponta para o que o Homebrew e o corpus já
  * deixaram na máquina.
  */
-export const WHISPER_BIN = "/opt/homebrew/bin/whisper-cli";
-export const VAD_BIN = "/opt/homebrew/bin/whisper-vad-speech-segments";
+/** Os nomes dos executáveis. Onde eles moram é decisão do `binaries.ts`. */
+const WHISPER_CLI = "whisper-cli";
+const VAD_CLI = "whisper-vad-speech-segments";
+
+export const whisperBin = (): string => binaryPath(WHISPER_CLI);
+export const vadBin = (): string => binaryPath(VAD_CLI);
 
 /**
  * O modelo do portão, vindo do catálogo.
@@ -121,7 +126,7 @@ function runWithWavOnStdin(
  */
 export async function hasSpeech(wav: Buffer): Promise<boolean> {
   const stdout = await runWithWavOnStdin(
-    VAD_BIN,
+    vadBin(),
     buildVadArgs(modelPath(VAD_MODEL_FILE)),
     wav,
   );
@@ -138,7 +143,7 @@ export async function hasSpeech(wav: Buffer): Promise<boolean> {
 export async function transcribe(wav: Buffer): Promise<string> {
   const { model, language } = preferences();
   const stdout = await runWithWavOnStdin(
-    WHISPER_BIN,
+    whisperBin(),
     buildWhisperArgs(modelPath(model), language),
     wav,
   );
@@ -148,5 +153,5 @@ export async function transcribe(wav: Buffer): Promise<string> {
 
 /** O executável está no lugar? Verificado no boot, não na primeira ditação. */
 export function isWhisperInstalled(): boolean {
-  return existsSync(WHISPER_BIN);
+  return existsSync(whisperBin());
 }

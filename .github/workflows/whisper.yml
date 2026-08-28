@@ -1,0 +1,58 @@
+# Compila o whisper.cpp autocontido para macOS arm64 e publica como artefato.
+#
+# Existe para não exigir cmake nem Xcode na máquina de quem empacota: o
+# artefato daqui vai para `vendor/whisper/` e o electron-builder o embarca.
+#
+# A tag é fixa. O app depende de detalhes medidos do whisper-cli — `-f -`
+# lendo o stdin, `-otxt -of -` obrigatórios com stdin, o formato exato da
+# saída do whisper-vad-speech-segments. Seguir o HEAD faria essas premissas
+# mudarem sem aviso.
+name: whisper.cpp
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag do whisper.cpp
+        default: v1.9.2
+
+jobs:
+  build:
+    # arm64: o alvo é Apple Silicon, e cross-compilar Metal não vale a pena.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ggml-org/whisper.cpp
+          ref: ${{ inputs.tag || 'v1.9.2' }}
+
+      - name: Compilar
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWHISPER_COREML=OFF \
+            -DGGML_METAL=ON \
+            -DGGML_METAL_EMBED_LIBRARY=ON \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DWHISPER_BUILD_TESTS=OFF
+          cmake --build build --config Release -j
+
+      - name: Conferir que é autocontido
+        run: |
+          mkdir -p out
+          for bin in whisper-cli whisper-vad-speech-segments; do
+            found="$(find build/bin -name "$bin" -type f | head -1)"
+            cp "$found" "out/$bin"
+            otool -L "out/$bin"
+            # Um binário que dependa de /opt/homebrew quebra em máquina limpa.
+            if otool -L "out/$bin" | grep -q "/opt/homebrew"; then
+              echo "::error::$bin ainda depende do Homebrew"
+              exit 1
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whisper-macos-arm64
+          path: out/

@@ -1,9 +1,6 @@
 {
   "name": "getthattext",
   "version": "0.1.0",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -11,12 +8,14 @@
     "build:renderer": "tsc -p tsconfig.renderer.json",
     "build": "npm run build:main && npm run build:renderer && npm run copy:assets",
     "copy:assets": "cp src/renderer/*.html src/renderer/*.css src/renderer/pcm-worklet.js dist/renderer/",
-    "start": "npm run build && electron dist/main/main.js",
+    "start": "npm run build && electron .",
     "verify:speech-gate": "electron scripts/verify-speech-gate.js",
     "verify:rewrite": "node scripts/verify-rewrite.mjs",
     "key:import": "electron scripts/import-groq-key.js",
     "build:icons": "electron scripts/build-tray-icons.js",
-    "verify:blip": "electron scripts/verify-blip.js"
+    "verify:blip": "electron scripts/verify-blip.js",
+    "package": "npm run build && electron-builder --mac --arm64",
+    "vendor:whisper": "bash scripts/build-whisper.sh"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^26.4.0",
     "electron": "^41.7.1",
+    "electron-builder": "26.15.3",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   },
@@ -36,14 +36,44 @@
   "build": {
     "appId": "com.filipeprado.getthattext",
     "productName": "getthattext",
+    "copyright": "Uso pessoal",
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "vendor/whisper",
+        "to": "whisper",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
     "mac": {
       "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
       "extendInfo": {
         "NSMicrophoneUsageDescription": "O getthattext usa o microfone para transcrever o que você dita. O áudio é processado na sua máquina e não é enviado a lugar nenhum.",
         "LSUIElement": true
       },
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
     }
-  }
+  },
+  "main": "dist/main/main.js"
 }
