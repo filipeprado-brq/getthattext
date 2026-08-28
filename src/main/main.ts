@@ -21,9 +21,14 @@ let hidden: BrowserWindow | undefined;
 let tray: Tray | undefined;
 
 /** Estados que o app assume durante uma ditação. */
-type State = "idle" | "opening" | "recording" | "processing";
+type State = "idle" | "opening" | "recording" | "processing" | "done" | "empty" | "failed";
 
 let state: State = "idle";
+
+/** Quanto tempo um estado terminal fica visível antes de voltar a ocioso. */
+const TERMINAL_MS = 2000;
+
+let terminalTimer: ReturnType<typeof setTimeout> | undefined;
 
 /**
  * O ícone é placeholder. O ticket #6 é dono do visual — sete estados,
@@ -35,14 +40,32 @@ const LABELS: Record<State, string> = {
   opening: "abrindo…",
   recording: "gravando",
   processing: "transcrevendo…",
+  done: "✓ copiado",
+  empty: "nada ouvido",
+  failed: "✕ falhou",
 };
+
+/**
+ * Estados terminais voltam a ocioso sozinhos.
+ *
+ * Os três precisam ser DISTINGUÍVEIS: um texto copiado, uma gravação sem
+ * fala e uma falha real são resultados diferentes. Se os três voltassem em
+ * silêncio ao mesmo ícone limpo, você aprenderia a ignorar todos.
+ */
+const TERMINAL: ReadonlySet<State> = new Set<State>(["done", "empty", "failed"]);
 
 function setState(next: State): void {
   state = next;
+  clearTimeout(terminalTimer);
+
   tray?.setTitle(LABELS[next] ? ` ${LABELS[next]}` : "");
   tray?.setToolTip(
     next === "idle" ? "getthattext — clique para ditar" : `getthattext — ${LABELS[next]}`,
   );
+
+  if (TERMINAL.has(next)) {
+    terminalTimer = setTimeout(() => setState("idle"), TERMINAL_MS);
+  }
 }
 
 function send(command: Command): void {
@@ -50,7 +73,10 @@ function send(command: Command): void {
 }
 
 function toggle(): void {
-  if (state === "idle") {
+  // Estados terminais ainda são visíveis por 2 s, mas já aceitam uma nova
+  // ditação: engolir o clique nesse intervalo faria você achar que o app
+  // travou justamente quando ele acabou de dar certo.
+  if (state === "idle" || TERMINAL.has(state)) {
     setState("opening");
     send("start");
   } else if (state === "opening" || state === "recording") {
@@ -101,11 +127,11 @@ ipcMain.on("audio-flowing", () => {
   if (state === "opening") setState("recording");
 });
 
-ipcMain.on("capture-empty", () => setState("idle"));
+ipcMain.on("capture-empty", () => setState("empty"));
 
 ipcMain.on("capture-failed", (_event, reason: string) => {
   console.error("captura falhou:", reason);
-  setState("idle");
+  setState("failed");
 });
 
 ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
@@ -114,11 +140,15 @@ ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
     const text = await transcribe(Buffer.from(bytes));
     // Texto vazio é resultado possível enquanto não há portão de fala (#3):
     // não sobrescrever a área de transferência com nada.
-    if (text.length > 0) clipboard.writeText(text);
+    if (text.length === 0) {
+      setState("empty");
+      return;
+    }
+    clipboard.writeText(text);
+    setState("done");
   } catch (error) {
     console.error("transcrição falhou:", error);
-  } finally {
-    setState("idle");
+    setState("failed");
   }
 });
 
