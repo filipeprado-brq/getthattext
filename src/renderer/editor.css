@@ -1,0 +1,194 @@
+/*
+  O editor segue a aparência do sistema em vez de inventar uma: é uma
+  janela utilitária de um app de barra de menu, e parecer nativa é o que a
+  faz sumir do caminho.
+*/
+:root {
+  --paper: #ffffff;
+  --sunken: #f4f4f5;
+  --ink: #1c1c1e;
+  --ink-soft: #6b6b70;
+  --line: #dcdcde;
+  --accent: #0a84ff;
+  --danger: #d7373f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1e1e20;
+    --sunken: #292a2d;
+    --ink: #f2f2f4;
+    --ink-soft: #9a9aa0;
+    --line: #3a3a3e;
+    --accent: #4aa3ff;
+    --danger: #ff6b6b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 18px 20px 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+section + section { margin-top: 26px; }
+
+#hint { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; }
+
+/* A transcrição crua, com as palavras clicáveis. */
+#heard-text {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  min-height: 46px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 13.5px;
+  user-select: none;
+}
+
+#heard-text .word {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 0;
+}
+#heard-text .word:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+#heard-text .word.picked { background: var(--accent); color: #fff; }
+
+#heard-text.empty {
+  color: var(--ink-soft);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+}
+
+/* O formulário de aprender. */
+#learn-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+#learn-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+#learn-form span { padding-bottom: 6px; color: var(--ink-soft); }
+
+input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 7px;
+  width: 100%;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+button {
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+#learn-form button { background: var(--accent); border-color: transparent; color: #fff; }
+
+/*
+  A lista de termos, em UMA linha por entrada.
+  A spec dimensiona o dicionário em 10 a 30 entradas: empilhar campos dentro
+  da linha faria a lista inteira virar rolagem.
+*/
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.row:last-of-type { border-bottom: 1px solid var(--line); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 1px 4px 1px 8px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  max-width: 100%;
+}
+.chip span { overflow: hidden; text-overflow: ellipsis; }
+.chip button {
+  border: 0;
+  background: none;
+  padding: 0 3px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+.chip button:hover { color: var(--danger); }
+
+.remove { color: var(--ink-soft); }
+.remove:hover { color: var(--danger); border-color: var(--danger); }
+
+.muted { color: var(--ink-soft); font-size: 12px; padding: 10px 0; }
+
+#add-blank { margin-top: 10px; }
+
+/* Sem ditado na memória, a seção inteira fica fora de alcance. */
+#learn.unavailable #learn-form,
+#learn.unavailable #hint { opacity: 0.45; pointer-events: none; }
+
+/* Cabeçalho da lista, para as três colunas não virarem adivinhação. */
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+}
+.head span:last-child { visibility: hidden; }
+
+/* A linha de recado: recusa e falha de gravação precisam ser DITAS. */
+#status {
+  margin: 8px 0 0;
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--danger);
+}

@@ -1,3 +1,5 @@
+import type { Entry } from "./dictionary.js";
+
 /**
  * Contrato entre o processo main e o renderer.
  *
@@ -33,5 +35,25 @@ export type Bridge = {
 declare global {
   interface Window {
     bridge: Bridge;
+  }
+}
+
+/**
+ * A ponte do editor de dicionário, que é outra janela e outro preload.
+ *
+ * Separada da `Bridge` de propósito: a janela oculta captura áudio e não
+ * tem nada que fazer com o dicionário, e o editor não pode ligar o
+ * microfone. Cada uma expõe só o que usa.
+ */
+export type DictionaryBridge = {
+  /** As entradas e o cru da última ditação, se houver uma nesta sessão. */
+  load(): Promise<{ entries: Entry[]; heard: string | undefined }>;
+  /** Grava e devolve o que ficou no disco, já normalizado pelo parse. */
+  save(entries: readonly Entry[]): Promise<Entry[]>;
+};
+
+declare global {
+  interface Window {
+    dictionaryBridge: DictionaryBridge;
   }
 }

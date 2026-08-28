@@ -154,16 +154,24 @@ function isEntry(value: unknown): value is Entry {
 export function parseDictionary(text: string | undefined): Entry[] {
   if (text === undefined) return [];
 
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    return normalizeEntries(JSON.parse(text));
   } catch {
     return [];
   }
+}
 
-  if (!Array.isArray(parsed)) return [];
+/**
+ * Reduz qualquer valor a entradas utilizáveis.
+ *
+ * Separado do parse porque o arquivo não é a única fronteira: o editor
+ * manda entradas pelo IPC, e o repo valida em toda fronteira em vez de
+ * confiar no tipo declarado.
+ */
+export function normalizeEntries(value: unknown): Entry[] {
+  if (!Array.isArray(value)) return [];
 
-  return parsed.filter(isEntry).map(({ term, heard, context }) => {
+  return value.filter(isEntry).map(({ term, heard, context }) => {
     // Aparar não é capricho: a fronteira de palavra exige não-letra dos dois
     // lados, então " alf " com espaço sobrando nunca casaria — e o modo de
     // falha seria a correção simplesmente não acontecer, sem aviso. É o erro

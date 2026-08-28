@@ -8,7 +8,7 @@ import {
 } from "electron";
 import { join } from "node:path";
 import type { Command } from "../shared/bridge";
-import { applyDictionary } from "../shared/dictionary";
+import { applyDictionary, type Entry } from "../shared/dictionary";
 import { formatElapsed } from "../shared/elapsed";
 import { PRESENTATION, type State } from "../shared/states";
 import { SHORTCUT_ACCELERATOR, SHORTCUT_LABEL } from "../shared/shortcut";
@@ -19,18 +19,20 @@ import {
   releaseShortcut,
   warnIfShortcutMissing,
 } from "./shortcut";
-import { dictionary } from "./dictionary";
+import { dictionary, saveDictionary } from "./dictionary";
 import { rewriteOrRaw } from "./groq";
 import { preferences, setPreference } from "./preferences";
 import { hasSpeech, transcribe } from "./whisper";
 
 /**
- * O app vive na barra de menu e não tem janela visível.
+ * As janelas do app, agrupadas porque só fazem sentido juntas.
  *
- * O renderer existe só porque `getUserMedia` é API web e não há equivalente
- * no processo main — ele fica oculto, fazendo captura e mais nada.
+ * `hidden` existe só porque `getUserMedia` é API web e não há equivalente no
+ * processo main — ela fica oculta, fazendo captura e mais nada. `editor` é a
+ * única janela que você vê, e só quando pede.
  */
-let hidden: BrowserWindow | undefined;
+const windows: { hidden?: BrowserWindow; editor?: BrowserWindow } = {};
+
 let tray: Tray | undefined;
 
 let state: State = "idle";
@@ -102,7 +104,7 @@ function startElapsedCounter(): void {
 }
 
 function send(command: Command): void {
-  hidden?.webContents.send("command", command);
+  windows.hidden?.webContents.send("command", command);
 }
 
 /**
@@ -127,7 +129,7 @@ function toggle(): void {
 
 
 function createHiddenWindow(): void {
-  hidden = new BrowserWindow({
+  windows.hidden = new BrowserWindow({
     show: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
@@ -135,7 +137,52 @@ function createHiddenWindow(): void {
       nodeIntegration: false,
     },
   });
-  void hidden.loadFile(join(__dirname, "../renderer/index.html"));
+  void windows.hidden.loadFile(join(__dirname, "../renderer/index.html"));
+}
+
+/**
+ * Abre o editor de dicionário, ou traz para frente o que já está aberto.
+ *
+ * Uma instância só: duas janelas editando o mesmo arquivo se sobrescreveriam
+ * sem que nenhuma das duas soubesse.
+ *
+ * `app.focus({ steal: true })` é necessário porque o app não tem ícone no
+ * Dock — sem isso a janela abre atrás do que você estava usando, que para
+ * quem acabou de escolher "Dicionário…" no menu parece que nada aconteceu.
+ */
+function openDictionaryEditor(): void {
+  if (windows.editor) {
+    windows.editor.show();
+    windows.editor.focus();
+    app.focus({ steal: true });
+
+    return;
+  }
+
+  const editor = new BrowserWindow({
+    width: 640,
+    height: 620,
+    minWidth: 520,
+    minHeight: 380,
+    title: "Dicionário",
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, "editorPreload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  editor.once("ready-to-show", () => {
+    editor.show();
+    app.focus({ steal: true });
+  });
+  editor.on("closed", () => {
+    windows.editor = undefined;
+  });
+
+  void editor.loadFile(join(__dirname, "../renderer/editor.html"));
+  windows.editor = editor;
 }
 
 function createTray(): void {
@@ -175,6 +222,8 @@ function createTray(): void {
             if (lastDictation) clipboard.writeText(lastDictation.corrected);
           },
         },
+        { type: "separator" },
+        { label: "Dicionário…", click: openDictionaryEditor },
         { type: "separator" },
         {
           label: "Som ao terminar",
@@ -231,6 +280,17 @@ ipcMain.on("capture-failed", (_event, reason: string) => {
   console.error("captura falhou:", reason);
   setState("failed");
 });
+
+ipcMain.handle("dictionary-load", () => ({
+  entries: dictionary(),
+  // `undefined` quando não houve ditação nesta sessão: é o que desabilita
+  // "adicionar do último ditado" na tela.
+  heard: lastDictation?.heard,
+}));
+
+ipcMain.handle("dictionary-save", (_event, entries: readonly Entry[]) =>
+  saveDictionary(entries),
+);
 
 ipcMain.handle("deliver-audio", async (_event, bytes: ArrayBuffer) => {
   setState("processing");

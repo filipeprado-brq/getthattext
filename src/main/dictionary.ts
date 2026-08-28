@@ -1,7 +1,7 @@
 import { app } from "electron";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Entry, parseDictionary } from "../shared/dictionary";
+import { type Entry, normalizeEntries, parseDictionary } from "../shared/dictionary";
 
 /**
  * O dicionário no disco.
@@ -39,4 +39,26 @@ export function dictionary(): Entry[] {
 
     return [];
   }
+}
+
+/**
+ * Grava o dicionário e devolve o que ficou.
+ *
+ * Normaliza ANTES de gravar: isto chega pelo IPC, e o tipo declarado na
+ * fronteira é promessa, não garantia. Sem isso o editor poderia deixar lixo
+ * no arquivo que só o próximo `dictionary()` descartaria.
+ *
+ * Devolve o resultado em vez do que recebeu porque a normalização apara
+ * espaço e descarta o que não vira regra — a tela precisa mostrar o que o
+ * app vai de fato usar, não o que foi digitado.
+ *
+ * Deixa a falha de escrita SUBIR. Quem chama é um `ipcMain.handle`, e a
+ * rejeição chega ao editor, que a mostra. Engolir aqui deixaria a tela
+ * afirmando que gravou.
+ */
+export function saveDictionary(entries: unknown): Entry[] {
+  const clean = normalizeEntries(entries);
+  writeFileSync(dictionaryPath(), `${JSON.stringify(clean, null, 2)}\n`);
+
+  return clean;
 }

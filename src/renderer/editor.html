@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>Dicionário</title>
+    <link rel="stylesheet" href="./editor.css" />
+  </head>
+  <body>
+    <!--
+      O editor de dicionário. A metade de cima existe para você não precisar
+      lembrar de cabeça como o Whisper escreveu errado: o cru fica na tela e
+      você clica no erro.
+    -->
+    <section id="learn">
+      <h1>Do último ditado</h1>
+      <p id="hint">Clique na palavra que saiu errada. Clique numa segunda para pegar o trecho.</p>
+      <div id="heard-text" aria-label="transcrição crua"></div>
+      <form id="learn-form">
+        <label>Ouvido<input id="heard" autocomplete="off" spellcheck="false" /></label>
+        <span aria-hidden="true">→</span>
+        <label>Correto<input id="term" autocomplete="off" spellcheck="false" /></label>
+        <button id="submit" type="submit">Adicionar</button>
+      </form>
+      <p id="status" role="status"></p>
+    </section>
+
+    <section id="entries">
+      <h1>Termos <span id="count"></span></h1>
+      <div id="list"></div>
+      <button id="add-blank" type="button">Novo termo</button>
+    </section>
+
+    <script type="module" src="./editor.js"></script>
+  </body>
+</html>
