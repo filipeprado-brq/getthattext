@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { Bridge } from "../shared/bridge";
+import type { Bridge, Command } from "../shared/bridge";
 
 /**
  * Superfície mínima exposta ao renderer.
@@ -11,8 +11,13 @@ import type { Bridge } from "../shared/bridge";
  * assim as duas pontas não podem divergir em silêncio.
  */
 const bridge: Bridge = {
-  saveWav: (bytes) => ipcRenderer.invoke("save-wav", bytes),
-  revealInFinder: (path) => ipcRenderer.invoke("reveal-in-finder", path),
+  onCommand: (handler) => {
+    ipcRenderer.on("command", (_event, command: Command) => handler(command));
+  },
+  deliverAudio: (bytes) => ipcRenderer.invoke("deliver-audio", bytes),
+  reportAudioFlowing: () => ipcRenderer.send("audio-flowing"),
+  reportEmpty: () => ipcRenderer.send("capture-empty"),
+  reportFailure: (reason) => ipcRenderer.send("capture-failed", reason),
 };
 
 contextBridge.exposeInMainWorld("bridge", bridge);

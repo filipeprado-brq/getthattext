@@ -84,10 +84,11 @@ whisper-vad-speech-segments -vm ggml-silero-v5.1.2.bin -f <audio>
 ### Invocação
 
 ```
-whisper-cli -m ggml-large-v3-turbo-q5_0.bin -f - -l pt -nt -np -sns -bs 1 -nf
+whisper-cli -m ggml-large-v3-turbo-q5_0.bin -f - -otxt -of - -l pt -nt -np -sns -bs 1 -nf
 ```
 
-- `-f -` lê o WAV do **stdin** (verificado no fonte; o README oficial não menciona)
+- `-f -` lê o WAV do **stdin** (o README oficial não menciona)
+- **`-otxt -of -` são obrigatórios com stdin, e a razão não é óbvia.** O `whisper-cli` deriva o nome do arquivo de saída do nome da entrada; com entrada `-`, a saída vira `-`, e sem um formato `--output-*` pedido explicitamente ele **não imprime a transcrição em lugar nenhum** — lê o áudio, transcreve e descarta, saindo com código 0. Descoberto ao implementar o [Ditar e colar](./issues/02-ditar-e-colar.md): a research original verificou o caminho de *leitura* no fonte e não seguiu o de *saída*.
 - `-bs 1 -nf` — greedy, sem temperature fallback: modo de menor latência
 - **Sem `--prompt`.** Ele é apagado após a primeira janela de 30 s, some de vez quando o fallback de temperatura sobe, e tem modos de falha destrutivos documentados. → [Onde entra o dicionário](./issues/10-onde-entra-o-dicionario-customizado.md)
 

@@ -3,21 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
-    <title>getthattext — captura</title>
-    <link rel="stylesheet" href="./estilo.css" />
+    <title>getthattext</title>
   </head>
   <body>
-    <main>
-      <p class="aviso">
-        Janela descartável do ticket #1. Existe para provar o pipeline de
-        áudio antes de qualquer outra coisa depender dele.
-      </p>
-
-      <button id="gravar" type="button" disabled>Preparando…</button>
-
-      <p id="estado" class="estado">—</p>
-      <p id="resultado" class="resultado"></p>
-    </main>
+    <!--
+      Janela oculta. Existe só porque getUserMedia é API web e não há
+      equivalente no processo main. Não tem interface: o gatilho e os
+      estados vivem no ícone da barra de menu.
+    -->
     <script type="module" src="./renderer.js"></script>
   </body>
 </html>

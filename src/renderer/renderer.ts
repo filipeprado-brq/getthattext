@@ -1,5 +1,5 @@
-import { encodeWav } from "../shared/wav.js";
 import "../shared/bridge.js";
+import { encodeWav } from "../shared/wav.js";
 
 /** A taxa que o whisper.cpp espera. Pedimos direto ao Web Audio. */
 const TARGET_SAMPLE_RATE = 16_000;
@@ -26,37 +26,19 @@ type Recording = {
   source: MediaStreamAudioSourceNode;
   chunks: Float32Array[];
   maxDurationTimer: ReturnType<typeof setTimeout>;
-  startedAt: number | undefined;
+  flowing: boolean;
 };
-
-const recordButton = document.querySelector<HTMLButtonElement>("#gravar")!;
-const statusLine = document.querySelector<HTMLParagraphElement>("#estado")!;
-const resultLine = document.querySelector<HTMLParagraphElement>("#resultado")!;
 
 let graph: AudioGraph | undefined;
 let recording: Recording | undefined;
-/** Trava contra clique duplo enquanto o microfone abre ou o arquivo salva. */
+/** Trava contra ordens sobrepostas enquanto o microfone abre ou o áudio é entregue. */
 let busy = false;
-
-/** Soma os frames de uma lista de blocos. */
-function countFrames(chunks: readonly Float32Array[]): number {
-  let frames = 0;
-  for (const chunk of chunks) frames += chunk.length;
-  return frames;
-}
-
-function showFailure(message: string): void {
-  statusLine.textContent = message;
-  recordButton.textContent = "Gravar";
-  recordButton.classList.remove("gravando");
-  recordButton.disabled = false;
-}
 
 /**
  * Cria o contexto e compila o worklet no boot.
  *
  * Isso abre um device de SAÍDA, não de entrada — o ponto laranja do macOS
- * não acende. No clique sobra só o `getUserMedia` e o `resume()`, que é
+ * não acende. No comando sobra só o `getUserMedia` e o `resume()`, que é
  * onde a spec quer que a latência fique.
  */
 async function prewarm(): Promise<void> {
@@ -80,7 +62,12 @@ async function prewarm(): Promise<void> {
   captureNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
     const current = recording;
     if (!current) return;
-    if (current.startedAt === undefined) markAudioFlowing(current);
+    if (!current.flowing) {
+      // O ícone só passa a "gravando" quando o áudio chega de fato: o
+      // Chromium adia o início da captura em até 5 s depois que o Mac acorda.
+      current.flowing = true;
+      window.bridge.reportAudioFlowing();
+    }
     current.chunks.push(event.data);
   };
 
@@ -90,43 +77,15 @@ async function prewarm(): Promise<void> {
   if (context.sampleRate !== TARGET_SAMPLE_RATE) {
     // Garantido pela spec do Web Audio, mas se a plataforma ignorar, o WAV
     // sairia com a taxa errada em silêncio.
-    resultLine.textContent = `Atenção: o contexto abriu a ${context.sampleRate} Hz, não a ${TARGET_SAMPLE_RATE} Hz.`;
+    window.bridge.reportFailure(
+      `contexto abriu a ${context.sampleRate} Hz, não a ${TARGET_SAMPLE_RATE} Hz`,
+    );
   }
-
-  recordButton.disabled = false;
-  recordButton.textContent = "Gravar";
-  statusLine.textContent = "Pronto";
-}
-
-/**
- * O cronômetro só começa quando o primeiro frame chega de verdade.
- *
- * O Chromium adia o início da captura em até 5 s depois que o Mac acorda do
- * sleep. Marcar no clique faria você falar no vazio achando que gravou.
- */
-function markAudioFlowing(current: Recording): void {
-  current.startedAt = performance.now();
-  recordButton.textContent = "Parar";
-  recordButton.classList.add("gravando");
-  tick();
-}
-
-function tick(): void {
-  const current = recording;
-  if (!current?.startedAt) return;
-  const seconds = (performance.now() - current.startedAt) / 1000;
-  statusLine.textContent = `Gravando — ${seconds.toFixed(1)}s`;
-  requestAnimationFrame(tick);
 }
 
 async function startRecording(): Promise<void> {
   if (!graph || recording || busy) return;
-
   busy = true;
-  recordButton.disabled = true;
-  recordButton.textContent = "Abrindo o microfone…";
-  statusLine.textContent = "Abrindo o microfone";
-  resultLine.textContent = "";
 
   let stream: MediaStream;
   try {
@@ -135,10 +94,10 @@ async function startRecording(): Promise<void> {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (error) {
     busy = false;
-    showFailure(
+    window.bridge.reportFailure(
       error instanceof Error && error.name === "NotAllowedError"
-        ? "Permissão de microfone negada."
-        : `Falha ao abrir o microfone: ${String(error)}`,
+        ? "permissão de microfone negada"
+        : `falha ao abrir o microfone: ${String(error)}`,
     );
     return;
   }
@@ -155,22 +114,17 @@ async function startRecording(): Promise<void> {
     stream,
     source,
     chunks: [],
-    startedAt: undefined,
-    maxDurationTimer: setTimeout(() => {
-      void stopRecording("limite de 2 minutos atingido");
-    }, MAX_DURATION_MS),
+    flowing: false,
+    maxDurationTimer: setTimeout(() => void stopRecording(), MAX_DURATION_MS),
   };
-
   busy = false;
-  recordButton.disabled = false;
 }
 
-async function stopRecording(reason?: string): Promise<void> {
+async function stopRecording(): Promise<void> {
   const current = recording;
   if (!current || !graph || busy) return;
-
   busy = true;
-  recordButton.disabled = true;
+
   clearTimeout(current.maxDurationTimer);
 
   // Desconectar corta a fonte, mas os quanta já postados ainda estão a
@@ -180,7 +134,6 @@ async function stopRecording(reason?: string): Promise<void> {
   // você está de fato sendo gravado.
   current.stream.getTracks().forEach((track) => track.stop());
 
-  statusLine.textContent = reason ? `Salvando (${reason})…` : "Salvando…";
   await new Promise((resolve) => setTimeout(resolve, DRAIN_MS));
 
   graph.captureNode.port.postMessage("stop");
@@ -188,41 +141,32 @@ async function stopRecording(reason?: string): Promise<void> {
 
   const { chunks } = current;
   recording = undefined;
-  recordButton.textContent = "Gravar";
-  recordButton.classList.remove("gravando");
 
   if (chunks.length === 0) {
     busy = false;
-    recordButton.disabled = false;
-    statusLine.textContent = "Nada foi capturado.";
+    window.bridge.reportEmpty();
     return;
   }
 
-  const sampleRate = graph.context.sampleRate;
-  const wav = encodeWav(chunks, sampleRate);
-  const bytes = wav.buffer.slice(
-    wav.byteOffset,
-    wav.byteOffset + wav.byteLength,
-  ) as ArrayBuffer;
-
+  const wav = encodeWav(chunks, graph.context.sampleRate);
   try {
-    const path = await window.bridge.saveWav(bytes);
-    const seconds = countFrames(chunks) / sampleRate;
-    statusLine.textContent = `${seconds.toFixed(1)}s · ${(wav.byteLength / 1024).toFixed(0)} KB`;
-    resultLine.textContent = path;
-    await window.bridge.revealInFinder(path);
+    await window.bridge.deliverAudio(
+      wav.buffer.slice(
+        wav.byteOffset,
+        wav.byteOffset + wav.byteLength,
+      ) as ArrayBuffer,
+    );
   } catch (error) {
-    statusLine.textContent = `Falha ao salvar: ${String(error)}`;
+    window.bridge.reportFailure(`falha ao entregar o áudio: ${String(error)}`);
   } finally {
     busy = false;
-    recordButton.disabled = false;
   }
 }
 
-recordButton.addEventListener("click", () => {
-  void (recording ? stopRecording() : startRecording());
+window.bridge.onCommand((command) => {
+  void (command === "start" ? startRecording() : stopRecording());
 });
 
 void prewarm().catch((error) => {
-  showFailure(`Falha ao preparar o áudio: ${String(error)}`);
+  window.bridge.reportFailure(`falha ao preparar o áudio: ${String(error)}`);
 });
