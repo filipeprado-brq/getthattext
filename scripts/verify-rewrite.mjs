@@ -61,6 +61,19 @@ const CASES = [
     must: [/bom dia|oi pessoal/i, /valeu|at[ée] mais/i],
   },
   {
+    // Conteúdo neutro, mas com a forma que falhava: passa de 40 palavras,
+    // tem hedge e tem vocativo. Sobre um ditado real assim, o grau de
+    // certeza sumia em 10 de 10 rodadas.
+    name: "preserva hedge e vocativo no caminho agressivo",
+    input:
+      "oi pessoal, então eu queria comentar uma coisa sobre a viagem que a " +
+      "gente tá planejando pro fim do ano, eu acredito que sair na sexta de " +
+      "manhã seja melhor do que na quinta à noite porque o trânsito na quinta " +
+      "costuma ser pior, mas não tenho certeza disso, talvez valha a pena " +
+      "checar antes de fechar, aí me falem o que vocês acham, abraço",
+    must: [/acredito|acho|creio/i, /talvez|não tenho certeza/i, /pessoal/i],
+  },
+  {
     name: "preserva número e prazo",
     input: "são 3 tickets pra entregar até sexta feira dia 12",
     must: ["3", "12"],

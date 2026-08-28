@@ -29,6 +29,19 @@ describe("SYSTEM_PROMPT", () => {
     expect(SYSTEM_PROMPT).toContain("saudações e despedidas");
   });
 
+  it("dá mais de um exemplo de hedge", () => {
+    // Com só "acho que" o modelo não generaliza: "eu acredito que" saía
+    // afirmado em 10 de 10 rodadas sobre um ditado real.
+    expect(SYSTEM_PROMPT).toContain("acredito que");
+    expect(SYSTEM_PROMPT).toContain("talvez");
+  });
+
+  it("separa reescrever de resumir", () => {
+    // Sem isto a saída encolhia 49% e levava junto hedge e vocativo.
+    expect(SYSTEM_PROMPT).toContain("Reescrever NÃO é");
+    expect(SYSTEM_PROMPT).toContain("resumir");
+  });
+
   it("proíbe acrescentar o que não foi dito", () => {
     expect(SYSTEM_PROMPT).toContain("NUNCA ACRESCENTE");
     expect(SYSTEM_PROMPT).toContain("informação que não está no texto");
