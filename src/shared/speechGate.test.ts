@@ -30,7 +30,8 @@ describe("buildVadArgs", () => {
     // uma segunda fonte da verdade. O teste trava a AUSÊNCIA da flag, não
     // o valor — de propósito: o default é questão aberta (spec §13, e uma
     // medição posterior achou falso positivo no silêncio capturado pelo
-    // próprio app). Quando o número for decidido, é aqui que ele entra.
+    // próprio app, issue #13). Quando o número for decidido, é aqui que
+    // ele entra.
     expect(args).not.toContain("-vt");
     expect(args).not.toContain("--vad-threshold");
   });

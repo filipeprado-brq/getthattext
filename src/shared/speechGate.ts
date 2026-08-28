@@ -33,6 +33,7 @@
  * fala do corpus perde o único segmento que o portão exige, nem em 0,95.
  * Subir o limiar e casar a cadeia de captura são os dois caminhos; nenhum
  * foi tomado ainda por falta de mais de uma amostra de silêncio do app.
+ * Medições completas e a varredura de limiar estão na issue #13.
  */
 export function buildVadArgs(modelPath: string): string[] {
   return [
