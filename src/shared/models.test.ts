@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeModel,
   bytesNeeded,
   formatBytes,
   MODELS,
@@ -90,6 +91,32 @@ describe("requiredModels", () => {
     // modelo: baixar o recomendado é melhor que não baixar nada.
     const files = requiredModels("ggml-inexistente.bin").map((m) => m.file);
     expect(files).toEqual([RECOMMENDED_MODEL, VAD_MODEL.file]);
+  });
+});
+
+describe("activeModel", () => {
+  const files = TRANSCRIPTION_MODELS.map(({ file }) => file);
+
+  it("usa o escolhido quando ele está no disco", () => {
+    expect(activeModel(files[1]!, [files[1]!])).toBe(files[1]);
+  });
+
+  it("cai no melhor presente quando o escolhido ainda não chegou", () => {
+    // As preferências deixam escolher e adiar o download. Até o novo
+    // chegar, o que está no disco continua transcrevendo — senão o app
+    // chamaria o whisper com um arquivo inexistente.
+    expect(activeModel(files[2]!, [files[0]!, files[1]!])).toBe(files[0]);
+  });
+
+  it("a ordem do catálogo é de qualidade, então o primeiro presente vence", () => {
+    expect(activeModel("nada.bin", [files[2]!, files[1]!])).toBe(files[1]);
+  });
+
+  it("sem nenhum no disco não há modelo ativo", () => {
+    // É o estado da primeira abertura, e quem responde por ele é o
+    // onboarding — não a transcrição.
+    expect(activeModel(files[0]!, [])).toBeUndefined();
+    expect(activeModel(files[0]!, ["ggml-silero-v5.1.2.bin"])).toBeUndefined();
   });
 });
 

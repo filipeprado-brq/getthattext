@@ -187,7 +187,7 @@ function toggle(): void {
   // Barra só o INÍCIO. Barrar o "parar" deixaria o microfone aberto e o
   // ponto laranja aceso se um modelo sumisse no meio da gravação — o
   // oposto do que o portão existe para fazer.
-  if (click === "start" && !isReady(onboardingState())) {
+  if (click === "start" && !isReady()) {
     openOnboarding();
 
     return;
@@ -702,7 +702,7 @@ void app.whenReady().then(() => {
   // A primeira abertura mostra o onboarding sozinha. Também volta se um
   // modelo for apagado ou a permissão revogada: o estado é derivado, não
   // um sinalizador de "já fiz isso".
-  if (!isReady(onboardingState())) openOnboarding();
+  if (!isReady()) openOnboarding();
 });
 
 app.on("will-quit", () => {

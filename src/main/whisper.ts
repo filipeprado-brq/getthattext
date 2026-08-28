@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { VAD_MODEL } from "../shared/models";
+import { activeModel, VAD_MODEL } from "../shared/models";
 import { binaryPath } from "./binaries";
 import { modelPath, modelsDir } from "./models";
 import { preferences } from "./preferences";
@@ -144,9 +144,14 @@ export async function hasSpeech(wav: Buffer): Promise<boolean> {
  */
 export async function transcribe(wav: Buffer): Promise<string> {
   const { model, language } = preferences();
+  // O ESCOLHIDO pode não estar no disco: as preferências deixam escolher e
+  // adiar o download. Até ele chegar, transcreve com o melhor que está lá —
+  // o alternativa seria chamar o whisper com um arquivo inexistente e
+  // devolver "model load", que fala do sintoma errado.
+  const inUse = activeModel(model, availableModels()) ?? model;
   const stdout = await runWithWavOnStdin(
     whisperBin(),
-    buildWhisperArgs(modelPath(model), language),
+    buildWhisperArgs(modelPath(inUse), language),
     wav,
   );
 

@@ -2,7 +2,7 @@ import { shell, systemPreferences } from "electron";
 import { hasApiKey } from "./apiKey";
 import { presentModels } from "./models";
 import { preferences } from "./preferences";
-import { requiredModels } from "../shared/models";
+import { activeModel, requiredModels, VAD_MODEL } from "../shared/models";
 import type { OnboardingState } from "../shared/onboarding";
 
 /**
@@ -43,8 +43,19 @@ export function onboardingState(): OnboardingState {
  * para o texto cru, e reabrir o onboarding a cada ditação seria pior que o
  * problema.
  */
-export function isReady(state: OnboardingState): boolean {
-  return state.microphone === "granted" && state.models.every((model) => model.present);
+export function isReady(): boolean {
+  const present = presentModels();
+
+  // Um modelo de transcrição QUALQUER, não o escolhido: as preferências
+  // deixam escolher outro e adiar o download, e nesse intervalo o app
+  // continua ditando com o que está no disco. Exigir o escolhido reabriria
+  // o onboarding a cada ditação por causa de uma escolha que não corre
+  // pressa.
+  return (
+    systemPreferences.getMediaAccessStatus("microphone") === "granted" &&
+    present.includes(VAD_MODEL.file) &&
+    activeModel(preferences().model, present) !== undefined
+  );
 }
 
 /**

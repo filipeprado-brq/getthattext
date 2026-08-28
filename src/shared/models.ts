@@ -144,6 +144,29 @@ export function requiredModels(chosen: string): readonly Model[] {
   return [model, VAD_MODEL];
 }
 
+/**
+ * O modelo que a transcrição vai usar DE VERDADE.
+ *
+ * Escolher um modelo que ainda não está no disco não pode parar a ditação:
+ * a escolha vale, o download pode esperar o dia que você quiser, e até lá o
+ * que já está no disco continua transcrevendo. Sem isto, escolher e adiar
+ * deixaria o app chamando o whisper com um arquivo que não existe — e o
+ * erro falaria de "model load", não de escolha.
+ *
+ * A ordem do catálogo é de QUALIDADE, então o primeiro presente é o melhor
+ * presente. `undefined` significa que não há nenhum: é o estado da primeira
+ * abertura, e quem responde por ele é o onboarding.
+ */
+export function activeModel(
+  chosen: string,
+  present: readonly string[],
+): string | undefined {
+  const wanted = TRANSCRIPTION_MODELS.find(({ file }) => file === chosen);
+  if (wanted && present.includes(wanted.file)) return wanted.file;
+
+  return TRANSCRIPTION_MODELS.find(({ file }) => present.includes(file))?.file;
+}
+
 /** O que fazer com um arquivo que já está no disco pela metade. */
 export type DownloadPlan =
   | { kind: "download"; from: number }
